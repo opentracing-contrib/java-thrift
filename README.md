@@ -47,5 +47,5 @@ TProtocol spanProtocol = new SpanProtocol(protocol, tracer)
 
 [ci-img]: https://travis-ci.org/opentracing-contrib/java-thrift.svg?branch=master
 [ci]: https://travis-ci.org/opentracing-contrib/java-thrift
-[maven-img]: https://img.shields.io/maven-central/v/io.opentracing.contrib/opentracing-thrift.svg?maxAge=2592000
+[maven-img]: https://img.shields.io/maven-central/v/io.opentracing.contrib/opentracing-thrift.svg
 [maven]: http://search.maven.org/#search%7Cga%7C1%7Copentracing-thrift
