@@ -5,6 +5,7 @@ import com.google.gson.JsonSyntaxException;
 import io.opentracing.ActiveSpan;
 import io.opentracing.References;
 import io.opentracing.SpanContext;
+import io.opentracing.Tracer;
 import io.opentracing.Tracer.SpanBuilder;
 import io.opentracing.propagation.Format.Builtin;
 import io.opentracing.propagation.TextMapExtractAdapter;
@@ -25,9 +26,20 @@ public class SpanProcessor implements TProcessor {
 
   private final Gson gson = new Gson();
   private final TProcessor processor;
+  private final Tracer tracer;
 
+  /**
+   * Construct SpanProcessor using tracer from GlobalTracer
+   *
+   * @param processor processor
+   */
   public SpanProcessor(TProcessor processor) {
+    this(processor, GlobalTracer.get());
+  }
+
+  public SpanProcessor(TProcessor processor, Tracer tracer) {
     this.processor = processor;
+    this.tracer = tracer;
   }
 
   @Override
@@ -53,7 +65,7 @@ public class SpanProcessor implements TProcessor {
       // looks like there is no span context in message name, collision with SEPARATOR
       return noSpanContext(message, iprot, oprot);
     }
-    SpanContext parent = GlobalTracer.get()
+    SpanContext parent = tracer
         .extract(Builtin.TEXT_MAP, new TextMapExtractAdapter(mapSpanContext));
 
     String msgName = message.name
@@ -95,7 +107,7 @@ public class SpanProcessor implements TProcessor {
   }
 
   private ActiveSpan buildSpan(TMessage message, String name, SpanContext parent) {
-    SpanBuilder spanBuilder = GlobalTracer.get().buildSpan(name)
+    SpanBuilder spanBuilder = tracer.buildSpan(name)
         .withTag(Tags.SPAN_KIND.getKey(), Tags.SPAN_KIND_SERVER);
 
     if (parent != null) {

@@ -18,7 +18,7 @@ pom.xml
 // Instantiate tracer
 Tracer tracer = ...
 
-// Register tracer with GlobalTracer
+// Optionally register tracer with GlobalTracer
 GlobalTracer.register(tracer);
 
 ```
@@ -28,7 +28,7 @@ GlobalTracer.register(tracer);
 ```java
 // Decorate TProcessor with SpanProcessor e.g.
 TProcessor processor = ...
-TProcessor spanProcessor = new SpanProcessor(processor);
+TProcessor spanProcessor = new SpanProcessor(processor, tracer);
 TServerTransport transport = ...
 TServer server = new TSimpleServer(new Args(transport).processor(spanProcessor));
 
@@ -41,7 +41,7 @@ TServer server = new TSimpleServer(new Args(transport).processor(spanProcessor))
 
 TTransport transport = ...
 TProtocol protocol = new TBinaryProtocol(transport);
-TProtocol spanProtocol = new SpanProtocol(protocol)
+TProtocol spanProtocol = new SpanProtocol(protocol, tracer)
 
 ```
 

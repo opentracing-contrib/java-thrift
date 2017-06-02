@@ -3,6 +3,7 @@ package io.opentracing.thrift;
 
 import com.google.gson.Gson;
 import io.opentracing.ActiveSpan;
+import io.opentracing.Tracer;
 import io.opentracing.propagation.Format.Builtin;
 import io.opentracing.propagation.TextMapInjectAdapter;
 import io.opentracing.tag.Tags;
@@ -28,17 +29,30 @@ import org.apache.thrift.protocol.TProtocolDecorator;
 public class SpanProtocol extends TProtocolDecorator {
 
   private final Gson gson = new Gson();
+  private final Tracer tracer;
 
   static final String SEPARATOR = "$span$";
   static final int SEPARATOR_LENGTH = SEPARATOR.length();
 
   /**
    * Encloses the specified protocol.
+   * Take tracer from GlobalTracer
    *
-   * @param protocol All operations will be forward to this protocol.  Must be non-null.
+   * @param protocol All operations will be forward to this protocol.
    */
   public SpanProtocol(TProtocol protocol) {
+    this(protocol, GlobalTracer.get());
+  }
+
+  /**
+   * Encloses the specified protocol.
+   *
+   * @param protocol All operations will be forward to this protocol.
+   * @param tracer Tracer.
+   */
+  public SpanProtocol(TProtocol protocol, Tracer tracer) {
     super(protocol);
+    this.tracer = tracer;
   }
 
   /**
@@ -50,7 +64,7 @@ public class SpanProtocol extends TProtocolDecorator {
   @Override
   public void writeMessageBegin(TMessage tMessage) throws TException {
     if (tMessage.type == TMessageType.CALL || tMessage.type == TMessageType.ONEWAY) {
-      ActiveSpan span = GlobalTracer.get().buildSpan(tMessage.name)
+      ActiveSpan span = tracer.buildSpan(tMessage.name)
           .withTag(Tags.SPAN_KIND.getKey(), Tags.SPAN_KIND_CLIENT)
           .startActive();
 
@@ -58,7 +72,7 @@ public class SpanProtocol extends TProtocolDecorator {
 
       Map<String, String> map = new HashMap<>();
       TextMapInjectAdapter adapter = new TextMapInjectAdapter(map);
-      GlobalTracer.get().inject(span.context(), Builtin.TEXT_MAP, adapter);
+      tracer.inject(span.context(), Builtin.TEXT_MAP, adapter);
 
       try {
         super.writeMessageBegin(new TMessage(
