@@ -13,20 +13,23 @@ class SpanDecorator {
 
   static final String COMPONENT_NAME = "java-thrift";
 
-  static void decorate(ActiveSpan span, String name, TMessage message) {
+  static void decorate(ActiveSpan span, TMessage message) {
     span.setTag(Tags.COMPONENT.getKey(), COMPONENT_NAME);
-    span.setTag("message.name", name);
+    span.setTag("message.name", message.name);
     span.setTag("message.type", message.type);
     span.setTag("message.seqid", message.seqid);
   }
 
   static void onError(Throwable throwable, ActiveSpan span) {
+    if (span == null) {
+      return;
+    }
     span.setTag(Tags.ERROR.getKey(), Boolean.TRUE);
     span.log(errorLogs(throwable));
   }
 
   private static Map<String, Object> errorLogs(Throwable throwable) {
-    Map<String, Object> errorLogs = new HashMap<>(5);
+    Map<String, Object> errorLogs = new HashMap<>();
     errorLogs.put("event", Tags.ERROR.getKey());
     errorLogs.put("error.kind", throwable.getClass().getName());
     errorLogs.put("error.object", throwable);

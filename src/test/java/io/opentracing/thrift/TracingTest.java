@@ -5,7 +5,9 @@ import static com.jayway.awaitility.Awaitility.await;
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import custom.CustomService;
 import io.opentracing.mock.MockSpan;
@@ -26,13 +28,10 @@ import org.apache.thrift.transport.TServerSocket;
 import org.apache.thrift.transport.TServerTransport;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
-import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.ExpectedException;
 
 public class TracingTest {
 
@@ -40,8 +39,6 @@ public class TracingTest {
       MockTracer.Propagator.TEXT_MAP);
   private TServer server;
 
-  @Rule
-  public ExpectedException thrown = ExpectedException.none();
 
   @BeforeClass
   public static void init() {
@@ -51,7 +48,6 @@ public class TracingTest {
   @Before
   public void before() throws Exception {
     mockTracer.reset();
-    startServer();
   }
 
   @After
@@ -60,41 +56,115 @@ public class TracingTest {
   }
 
   @Test
-  public void test() throws Exception {
+  public void newClientOldServer() throws Exception {
+    startOldServer();
+
+    TTransport transport = new TSocket("localhost", 8888);
+    transport.open();
+
+    TProtocol protocol = new TBinaryProtocol(transport);
+
+    CustomService.Client client = new CustomService.Client(new SpanProtocol(protocol));
+    assertEquals("Say Old Server", client.say("Old", "Server"));
+
+    await().atMost(15, TimeUnit.SECONDS).until(reportedSpansSize(), equalTo(1));
+
+    List<MockSpan> mockSpans = mockTracer.finishedSpans();
+    assertEquals(1, mockSpans.size());
+
+    checkSpans(mockSpans, "say");
+    assertNull(mockTracer.activeSpan());
+  }
+
+  @Test
+  public void oldClientNewSever() throws Exception {
+    startNewServer();
+
     TTransport transport = new TSocket("localhost", 8888);
     transport.open();
 
     TProtocol protocol = new TBinaryProtocol(transport);
     CustomService.Client client = new CustomService.Client(protocol);
 
-    assertEquals("Say Hello", client.say("Hello"));
+    assertEquals("Say Hello World", client.say("Hello", "World"));
 
-    CustomService.Client client2 = new CustomService.Client(new SpanProtocol(protocol));
-    assertEquals("Say Good bye", client2.say("Good bye"));
-
-    await().atMost(15, TimeUnit.SECONDS).until(reportedSpansSize(), equalTo(3));
+    await().atMost(5, TimeUnit.SECONDS).until(reportedSpansSize(), equalTo(1));
 
     List<MockSpan> mockSpans = mockTracer.finishedSpans();
-    assertEquals(3, mockSpans.size());
+    assertEquals(1, mockSpans.size());
 
     checkSpans(mockSpans, "say");
+    assertNull(mockTracer.activeSpan());
   }
 
   @Test
-  public void withError() throws Exception {
+  public void newClientNewServer() throws Exception {
+    startNewServer();
+
     TTransport transport = new TSocket("localhost", 8888);
     transport.open();
 
     TProtocol protocol = new TBinaryProtocol(transport);
-    CustomService.Client client2 = new CustomService.Client(new SpanProtocol(protocol));
 
-    thrown.expect(TTransportException.class);
-    assertEquals("Say Good bye", client2.withError());
+    CustomService.Client client = new CustomService.Client(new SpanProtocol(protocol));
+    assertEquals("Say Good bye World", client.say("Good bye", "World"));
+
+    await().atMost(5, TimeUnit.SECONDS).until(reportedSpansSize(), equalTo(2));
+
+    List<MockSpan> mockSpans = mockTracer.finishedSpans();
+    assertEquals(2, mockSpans.size());
+
+    assertTrue(mockSpans.get(0).parentId() != 0 || mockSpans.get(1).parentId() != 0);
+
+    checkSpans(mockSpans, "say");
+    assertNull(mockTracer.activeSpan());
+  }
+
+  @Test
+  public void withoutArgs() throws Exception {
+    startNewServer();
+
+    TTransport transport = new TSocket("localhost", 8888);
+    transport.open();
+
+    TProtocol protocol = new TBinaryProtocol(transport);
+    CustomService.Client client = new CustomService.Client(new SpanProtocol(protocol));
+
+    assertEquals("no args", client.withoutArgs());
 
     await().atMost(15, TimeUnit.SECONDS).until(reportedSpansSize(), equalTo(2));
 
     List<MockSpan> mockSpans = mockTracer.finishedSpans();
     assertEquals(2, mockSpans.size());
+
+    assertTrue(mockSpans.get(0).parentId() != 0 || mockSpans.get(1).parentId() != 0);
+
+    checkSpans(mockSpans, "withoutArgs");
+    assertNull(mockTracer.activeSpan());
+  }
+
+  @Test
+  public void withError() throws Exception {
+    startNewServer();
+
+    TTransport transport = new TSocket("localhost", 8888);
+    transport.open();
+
+    TProtocol protocol = new TBinaryProtocol(transport);
+    CustomService.Client client = new CustomService.Client(new SpanProtocol(protocol));
+
+    try {
+      assertEquals("Say Good bye", client.withError());
+      fail();
+    } catch (Exception ignore) {
+    }
+
+    await().atMost(15, TimeUnit.SECONDS).until(reportedSpansSize(), equalTo(2));
+
+    List<MockSpan> mockSpans = mockTracer.finishedSpans();
+    assertEquals(2, mockSpans.size());
+
+    assertTrue(mockSpans.get(0).parentId() != 0 || mockSpans.get(1).parentId() != 0);
 
     checkSpans(mockSpans, "withError");
 
@@ -103,17 +173,55 @@ public class TracingTest {
         assertEquals(Boolean.TRUE, mockSpan.tags().get(Tags.ERROR.getKey()));
         assertFalse(mockSpan.logEntries().isEmpty());
       }
-
     }
+    assertNull(mockTracer.activeSpan());
   }
 
-  private void startServer() throws Exception {
+  @Test
+  public void withCollision() throws Exception {
+    startNewServer();
+
+    TTransport transport = new TSocket("localhost", 8888);
+    transport.open();
+
+    TProtocol protocol = new TBinaryProtocol(transport);
+    CustomService.Client client = new CustomService.Client(new SpanProtocol(protocol));
+
+    assertEquals("collision", client.withCollision("collision"));
+
+    await().atMost(15, TimeUnit.SECONDS).until(reportedSpansSize(), equalTo(2));
+
+    List<MockSpan> mockSpans = mockTracer.finishedSpans();
+    assertEquals(2, mockSpans.size());
+
+    assertTrue(mockSpans.get(0).parentId() != 0 || mockSpans.get(1).parentId() != 0);
+
+    checkSpans(mockSpans, "withCollision");
+  }
+
+  private void startNewServer() throws Exception {
     CustomHandler CustomHandler = new CustomHandler();
     final TProcessor CustomProcessor = new CustomService.Processor<CustomService.Iface>(
         CustomHandler);
 
     TServerTransport transport = new TServerSocket(8888);
     server = new TSimpleServer(new Args(transport).processor(new SpanProcessor(CustomProcessor)));
+
+    new Thread(new Runnable() {
+      @Override
+      public void run() {
+        server.serve();
+      }
+    }).start();
+  }
+
+  private void startOldServer() throws Exception {
+    CustomHandler CustomHandler = new CustomHandler();
+    final TProcessor CustomProcessor = new CustomService.Processor<CustomService.Iface>(
+        CustomHandler);
+
+    TServerTransport transport = new TServerSocket(8888);
+    server = new TSimpleServer(new Args(transport).processor(CustomProcessor));
 
     new Thread(new Runnable() {
       @Override
@@ -148,8 +256,6 @@ public class TracingTest {
       assertEquals((byte) 1, mockSpan.tags().get("message.type"));
       assertEquals(1, mockSpan.tags().get("message.seqid"));
       assertEquals(0, mockSpan.generatedErrors().size());
-      String operationName = mockSpan.operationName();
-      assertTrue(operationName.equals("say"));
     }
   }
 

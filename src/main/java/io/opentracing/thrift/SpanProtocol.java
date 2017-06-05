@@ -1,7 +1,6 @@
 package io.opentracing.thrift;
 
 
-import com.google.gson.Gson;
 import io.opentracing.ActiveSpan;
 import io.opentracing.Tracer;
 import io.opentracing.propagation.Format.Builtin;
@@ -10,29 +9,27 @@ import io.opentracing.tag.Tags;
 import io.opentracing.util.GlobalTracer;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Map.Entry;
 import org.apache.thrift.TException;
+import org.apache.thrift.protocol.TField;
+import org.apache.thrift.protocol.TMap;
 import org.apache.thrift.protocol.TMessage;
-import org.apache.thrift.protocol.TMessageType;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.protocol.TProtocolDecorator;
+import org.apache.thrift.protocol.TType;
 
 /**
  * <code>SpanProtocol</code> is a protocol-independent concrete decorator that allows a Thrift
- * client to communicate with a tracing Thrift server, by prepending the span context to the
- * function name during function calls.
+ * client to communicate with a tracing Thrift server, by adding the span context to the
+ * string field during function calls.
  *
  * <p>NOTE: THIS IS NOT USED BY SERVERS.  On the server, use {@link SpanProcessor} to handle
  * requests from a tracing client.
- *
- * <p>Inspired by {@link org.apache.thrift.protocol.TMultiplexedProtocol}
  */
 public class SpanProtocol extends TProtocolDecorator {
 
-  private final Gson gson = new Gson();
   private final Tracer tracer;
-
-  static final String SEPARATOR = "$span$";
-  static final int SEPARATOR_LENGTH = SEPARATOR.length();
+  static final short SPAN_FIELD_ID = 3333; // Magic number
 
   /**
    * Encloses the specified protocol.
@@ -55,43 +52,43 @@ public class SpanProtocol extends TProtocolDecorator {
     this.tracer = tracer;
   }
 
-  /**
-   * Prepends the span context to the function name, separated by SEPARATOR
-   *
-   * @param tMessage The original message.
-   * @throws TException Passed through from wrapped <code>TProtocol</code> instance.
-   */
   @Override
   public void writeMessageBegin(TMessage tMessage) throws TException {
-    if (tMessage.type == TMessageType.CALL || tMessage.type == TMessageType.ONEWAY) {
-      ActiveSpan span = tracer.buildSpan(tMessage.name)
-          .withTag(Tags.SPAN_KIND.getKey(), Tags.SPAN_KIND_CLIENT)
-          .startActive();
+    ActiveSpan span = tracer.buildSpan(tMessage.name)
+        .withTag(Tags.SPAN_KIND.getKey(), Tags.SPAN_KIND_CLIENT)
+        .startActive();
 
-      SpanDecorator.decorate(span, tMessage.name, tMessage);
-
-      Map<String, String> map = new HashMap<>();
-      TextMapInjectAdapter adapter = new TextMapInjectAdapter(map);
-      tracer.inject(span.context(), Builtin.TEXT_MAP, adapter);
-
-      try {
-        super.writeMessageBegin(new TMessage(
-            mapToString(map) + SEPARATOR + tMessage.name,
-            tMessage.type,
-            tMessage.seqid
-        ));
-      } catch (Exception e) {
-        SpanDecorator.onError(e, span);
-      } finally {
-        span.close();
-      }
-
-    } else {
-      super.writeMessageBegin(tMessage);
-    }
+    SpanDecorator.decorate(span, tMessage);
+    super.writeMessageBegin(tMessage);
   }
 
-  private String mapToString(Map<String, String> map) throws TException {
-    return gson.toJson(map);
+  @Override
+  public void writeFieldStop() throws TException {
+
+    ActiveSpan span = tracer.activeSpan();
+
+    Map<String, String> map = new HashMap<>();
+    TextMapInjectAdapter adapter = new TextMapInjectAdapter(map);
+    tracer.inject(span.context(), Builtin.TEXT_MAP, adapter);
+
+    super.writeFieldBegin(new TField("span", TType.MAP, SPAN_FIELD_ID));
+    super.writeMapBegin(new TMap(TType.STRING, TType.STRING, map.size()));
+    for (Entry<String, String> entry : map.entrySet()) {
+      super.writeString(entry.getKey());
+      super.writeString(entry.getValue());
+    }
+    super.writeMapEnd();
+    super.writeFieldEnd();
+
+    super.writeFieldStop();
+  }
+
+  @Override
+  public void writeMessageEnd() throws TException {
+    try {
+      super.writeMessageEnd();
+    } finally {
+      tracer.activeSpan().close();
+    }
   }
 }

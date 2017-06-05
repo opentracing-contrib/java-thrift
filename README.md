@@ -14,6 +14,8 @@ pom.xml
 
 ## Usage
 
+Please don't use `FieldID` equal `3333`. It is a _magic number_ for injected span context.
+
 ```java
 // Instantiate tracer
 Tracer tracer = ...
