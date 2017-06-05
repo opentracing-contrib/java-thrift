@@ -57,9 +57,10 @@ public class TracingTest {
 
   @Test
   public void newClientOldServer() throws Exception {
-    startOldServer();
+    int port = 8884;
+    startOldServer(port);
 
-    TTransport transport = new TSocket("localhost", 8888);
+    TTransport transport = new TSocket("localhost", port);
     transport.open();
 
     TProtocol protocol = new TBinaryProtocol(transport);
@@ -78,9 +79,10 @@ public class TracingTest {
 
   @Test
   public void oldClientNewSever() throws Exception {
-    startNewServer();
+    int port = 8885;
+    startNewServer(port);
 
-    TTransport transport = new TSocket("localhost", 8888);
+    TTransport transport = new TSocket("localhost", port);
     transport.open();
 
     TProtocol protocol = new TBinaryProtocol(transport);
@@ -99,9 +101,10 @@ public class TracingTest {
 
   @Test
   public void newClientNewServer() throws Exception {
-    startNewServer();
+    int port = 8886;
+    startNewServer(port);
 
-    TTransport transport = new TSocket("localhost", 8888);
+    TTransport transport = new TSocket("localhost", port);
     transport.open();
 
     TProtocol protocol = new TBinaryProtocol(transport);
@@ -122,9 +125,10 @@ public class TracingTest {
 
   @Test
   public void withoutArgs() throws Exception {
-    startNewServer();
+    int port = 8887;
+    startNewServer(port);
 
-    TTransport transport = new TSocket("localhost", 8888);
+    TTransport transport = new TSocket("localhost", port);
     transport.open();
 
     TProtocol protocol = new TBinaryProtocol(transport);
@@ -145,9 +149,10 @@ public class TracingTest {
 
   @Test
   public void withError() throws Exception {
-    startNewServer();
+    int port = 8888;
+    startNewServer(port);
 
-    TTransport transport = new TSocket("localhost", 8888);
+    TTransport transport = new TSocket("localhost", port);
     transport.open();
 
     TProtocol protocol = new TBinaryProtocol(transport);
@@ -179,9 +184,10 @@ public class TracingTest {
 
   @Test
   public void withCollision() throws Exception {
-    startNewServer();
+    int port = 8889;
+    startNewServer(port);
 
-    TTransport transport = new TSocket("localhost", 8888);
+    TTransport transport = new TSocket("localhost", port);
     transport.open();
 
     TProtocol protocol = new TBinaryProtocol(transport);
@@ -199,12 +205,12 @@ public class TracingTest {
     checkSpans(mockSpans, "withCollision");
   }
 
-  private void startNewServer() throws Exception {
+  private void startNewServer(int port) throws Exception {
     CustomHandler CustomHandler = new CustomHandler();
     final TProcessor CustomProcessor = new CustomService.Processor<CustomService.Iface>(
         CustomHandler);
 
-    TServerTransport transport = new TServerSocket(8888);
+    TServerTransport transport = new TServerSocket(port);
     server = new TSimpleServer(new Args(transport).processor(new SpanProcessor(CustomProcessor)));
 
     new Thread(new Runnable() {
@@ -215,12 +221,12 @@ public class TracingTest {
     }).start();
   }
 
-  private void startOldServer() throws Exception {
+  private void startOldServer(int port) throws Exception {
     CustomHandler CustomHandler = new CustomHandler();
     final TProcessor CustomProcessor = new CustomService.Processor<CustomService.Iface>(
         CustomHandler);
 
-    TServerTransport transport = new TServerSocket(8888);
+    TServerTransport transport = new TServerSocket(port);
     server = new TSimpleServer(new Args(transport).processor(CustomProcessor));
 
     new Thread(new Runnable() {
