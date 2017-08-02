@@ -46,7 +46,9 @@ class ServerProtocolDecorator extends TProtocolDecorator {
   public ByteBuffer readBinary() throws TException {
     ByteBuffer byteBuffer = super.readBinary();
     if (nextSpan) {
-      mapElements.add(new String(byteBuffer.array()));
+      byte[] bytes = new byte[byteBuffer.remaining()];
+      byteBuffer.get(bytes, 0, bytes.length);
+      mapElements.add(new String(bytes));
     }
 
     return byteBuffer;
