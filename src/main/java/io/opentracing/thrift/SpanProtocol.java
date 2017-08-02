@@ -17,6 +17,7 @@ import org.apache.thrift.protocol.TMessage;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.protocol.TProtocolDecorator;
 import org.apache.thrift.protocol.TType;
+import org.apache.thrift.transport.TTransportException;
 
 /**
  * <code>SpanProtocol</code> is a protocol-independent concrete decorator that allows a Thrift
@@ -84,9 +85,22 @@ public class SpanProtocol extends TProtocolDecorator {
   }
 
   @Override
-  public void writeMessageEnd() throws TException {
+  public TMessage readMessageBegin() throws TException {
     try {
-      super.writeMessageEnd();
+      return super.readMessageBegin();
+    } catch (TTransportException tte) {
+      ActiveSpan span = tracer.activeSpan();
+      if (span != null) {
+        span.close();
+      }
+      throw tte;
+    }
+  }
+
+  @Override
+  public void readMessageEnd() throws TException {
+    try {
+      super.readMessageEnd();
     } finally {
       ActiveSpan span = tracer.activeSpan();
       if (span != null) {
