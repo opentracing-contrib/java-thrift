@@ -64,21 +64,21 @@ public class SpanProtocol extends TProtocolDecorator {
 
   @Override
   public void writeFieldStop() throws TException {
-
     ActiveSpan span = tracer.activeSpan();
+    if (span != null) {
+        Map<String, String> map = new HashMap<>();
+        TextMapInjectAdapter adapter = new TextMapInjectAdapter(map);
+        tracer.inject(span.context(), Builtin.TEXT_MAP, adapter);
 
-    Map<String, String> map = new HashMap<>();
-    TextMapInjectAdapter adapter = new TextMapInjectAdapter(map);
-    tracer.inject(span.context(), Builtin.TEXT_MAP, adapter);
-
-    super.writeFieldBegin(new TField("span", TType.MAP, SPAN_FIELD_ID));
-    super.writeMapBegin(new TMap(TType.STRING, TType.STRING, map.size()));
-    for (Entry<String, String> entry : map.entrySet()) {
-      super.writeString(entry.getKey());
-      super.writeString(entry.getValue());
+        super.writeFieldBegin(new TField("span", TType.MAP, SPAN_FIELD_ID));
+        super.writeMapBegin(new TMap(TType.STRING, TType.STRING, map.size()));
+        for (Entry<String, String> entry : map.entrySet()) {
+          super.writeString(entry.getKey());
+          super.writeString(entry.getValue());
+        }
+        super.writeMapEnd();
+        super.writeFieldEnd();
     }
-    super.writeMapEnd();
-    super.writeFieldEnd();
 
     super.writeFieldStop();
   }
@@ -88,7 +88,10 @@ public class SpanProtocol extends TProtocolDecorator {
     try {
       super.writeMessageEnd();
     } finally {
-      tracer.activeSpan().close();
+      ActiveSpan span = tracer.activeSpan();
+      if (span != null) {
+        span.close();
+      }
     }
   }
 }
