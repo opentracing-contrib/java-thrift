@@ -8,6 +8,11 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 import custom.CustomService;
 import io.opentracing.mock.MockSpan;
@@ -35,8 +40,8 @@ import org.junit.Test;
 
 public class TracingTest {
 
-  private static final MockTracer mockTracer = new MockTracer(new ThreadLocalActiveSpanSource(),
-      MockTracer.Propagator.TEXT_MAP);
+  private static final MockTracer mockTracer = spy(new MockTracer(new ThreadLocalActiveSpanSource(),
+      MockTracer.Propagator.TEXT_MAP));
   private TServer server;
 
 
@@ -48,6 +53,7 @@ public class TracingTest {
   @Before
   public void before() throws Exception {
     mockTracer.reset();
+    reset(mockTracer);
   }
 
   @After
@@ -75,6 +81,7 @@ public class TracingTest {
 
     checkSpans(mockSpans, "say");
     assertNull(mockTracer.activeSpan());
+    verify(mockTracer, times(1)).buildSpan(anyString());
   }
 
   @Test
@@ -97,6 +104,7 @@ public class TracingTest {
 
     checkSpans(mockSpans, "say");
     assertNull(mockTracer.activeSpan());
+    verify(mockTracer, times(1)).buildSpan(anyString());
   }
 
   @Test
@@ -121,6 +129,7 @@ public class TracingTest {
 
     checkSpans(mockSpans, "say");
     assertNull(mockTracer.activeSpan());
+    verify(mockTracer, times(2)).buildSpan(anyString());
   }
 
   @Test
@@ -145,6 +154,8 @@ public class TracingTest {
 
     checkSpans(mockSpans, "withoutArgs");
     assertNull(mockTracer.activeSpan());
+
+    verify(mockTracer, times(2)).buildSpan(anyString());
   }
 
   @Test
@@ -180,6 +191,8 @@ public class TracingTest {
       }
     }
     assertNull(mockTracer.activeSpan());
+
+    verify(mockTracer, times(2)).buildSpan(anyString());
   }
 
   @Test
@@ -203,6 +216,7 @@ public class TracingTest {
     assertTrue(mockSpans.get(0).parentId() != 0 || mockSpans.get(1).parentId() != 0);
 
     checkSpans(mockSpans, "withCollision");
+    verify(mockTracer, times(2)).buildSpan(anyString());
   }
 
   private void startNewServer(int port) throws Exception {
