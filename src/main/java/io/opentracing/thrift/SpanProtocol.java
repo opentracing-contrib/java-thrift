@@ -91,6 +91,7 @@ public class SpanProtocol extends TProtocolDecorator {
     } catch (TTransportException tte) {
       ActiveSpan span = tracer.activeSpan();
       if (span != null) {
+        SpanDecorator.onError(tte, span);
         span.close();
       }
       throw tte;

@@ -185,10 +185,8 @@ public class TracingTest {
     checkSpans(mockSpans, "withError");
 
     for (MockSpan mockSpan : mockSpans) {
-      if (mockSpan.parentId() > 0) {
-        assertEquals(Boolean.TRUE, mockSpan.tags().get(Tags.ERROR.getKey()));
-        assertFalse(mockSpan.logEntries().isEmpty());
-      }
+      assertEquals(Boolean.TRUE, mockSpan.tags().get(Tags.ERROR.getKey()));
+      assertFalse(mockSpan.logEntries().isEmpty());
     }
     assertNull(mockTracer.activeSpan());
 
