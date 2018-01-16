@@ -1,7 +1,21 @@
+/*
+ * Copyright 2017-2018 The OpenTracing Authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied. See the License for the specific language governing permissions and limitations under
+ * the License.
+ */
 package io.opentracing.thrift;
 
 
-import io.opentracing.ActiveSpan;
+import io.opentracing.Scope;
+import io.opentracing.Span;
 import io.opentracing.Tracer;
 import io.opentracing.propagation.Format.Builtin;
 import io.opentracing.propagation.TextMapInjectAdapter;
@@ -55,9 +69,9 @@ public class SpanProtocol extends TProtocolDecorator {
 
   @Override
   public void writeMessageBegin(TMessage tMessage) throws TException {
-    ActiveSpan span = tracer.buildSpan(tMessage.name)
+    Span span = tracer.buildSpan(tMessage.name)
         .withTag(Tags.SPAN_KIND.getKey(), Tags.SPAN_KIND_CLIENT)
-        .startActive();
+        .startActive(true).span();
 
     SpanDecorator.decorate(span, tMessage);
     super.writeMessageBegin(tMessage);
@@ -65,20 +79,20 @@ public class SpanProtocol extends TProtocolDecorator {
 
   @Override
   public void writeFieldStop() throws TException {
-    ActiveSpan span = tracer.activeSpan();
+    Span span = tracer.activeSpan();
     if (span != null) {
-        Map<String, String> map = new HashMap<>();
-        TextMapInjectAdapter adapter = new TextMapInjectAdapter(map);
-        tracer.inject(span.context(), Builtin.TEXT_MAP, adapter);
+      Map<String, String> map = new HashMap<>();
+      TextMapInjectAdapter adapter = new TextMapInjectAdapter(map);
+      tracer.inject(span.context(), Builtin.TEXT_MAP, adapter);
 
-        super.writeFieldBegin(new TField("span", TType.MAP, SPAN_FIELD_ID));
-        super.writeMapBegin(new TMap(TType.STRING, TType.STRING, map.size()));
-        for (Entry<String, String> entry : map.entrySet()) {
-          super.writeString(entry.getKey());
-          super.writeString(entry.getValue());
-        }
-        super.writeMapEnd();
-        super.writeFieldEnd();
+      super.writeFieldBegin(new TField("span", TType.MAP, SPAN_FIELD_ID));
+      super.writeMapBegin(new TMap(TType.STRING, TType.STRING, map.size()));
+      for (Entry<String, String> entry : map.entrySet()) {
+        super.writeString(entry.getKey());
+        super.writeString(entry.getValue());
+      }
+      super.writeMapEnd();
+      super.writeFieldEnd();
     }
 
     super.writeFieldStop();
@@ -89,10 +103,10 @@ public class SpanProtocol extends TProtocolDecorator {
     try {
       return super.readMessageBegin();
     } catch (TTransportException tte) {
-      ActiveSpan span = tracer.activeSpan();
-      if (span != null) {
-        SpanDecorator.onError(tte, span);
-        span.close();
+      Scope scope = tracer.scopeManager().active();
+      if (scope != null) {
+        SpanDecorator.onError(tte, scope.span());
+        scope.close();
       }
       throw tte;
     }
@@ -103,9 +117,9 @@ public class SpanProtocol extends TProtocolDecorator {
     try {
       super.readMessageEnd();
     } finally {
-      ActiveSpan span = tracer.activeSpan();
-      if (span != null) {
-        span.close();
+      Scope scope = tracer.scopeManager().active();
+      if (scope != null) {
+        scope.close();
       }
     }
   }
