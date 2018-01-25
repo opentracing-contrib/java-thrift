@@ -30,7 +30,9 @@ import org.apache.thrift.protocol.TMap;
 import org.apache.thrift.protocol.TMessage;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.protocol.TProtocolDecorator;
+import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.protocol.TType;
+import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 
 /**
@@ -49,6 +51,9 @@ public class SpanProtocol extends TProtocolDecorator {
   /**
    * Encloses the specified protocol.
    * Take tracer from GlobalTracer
+   *
+   * <p>It is recommended that you use the {@link Factory} to create properly traced {@link TProtocol}
+   * instances (that is, wrapped with a {@link SpanProtocol}) from your {@link TTransport}.
    *
    * @param protocol All operations will be forward to this protocol.
    */
@@ -121,6 +126,24 @@ public class SpanProtocol extends TProtocolDecorator {
       if (scope != null) {
         scope.close();
       }
+    }
+  }
+
+  /**
+   * A {@link TProtocolFactory} that makes sure the returned {@link TProtocol} instances are
+   * wrapped with a {@link SpanProtocol}.
+   */
+  public static class Factory implements TProtocolFactory {
+
+    private final TProtocolFactory delegate;
+
+    public Factory(TProtocolFactory delegate) {
+      this.delegate = delegate;
+    }
+
+    @Override
+    public TProtocol getProtocol(TTransport trans) {
+      return new SpanProtocol(delegate.getProtocol(trans));
     }
   }
 }
