@@ -13,7 +13,6 @@
  */
 package io.opentracing.thrift;
 
-import io.opentracing.References;
 import io.opentracing.Span;
 import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
@@ -109,7 +108,7 @@ class ServerProtocolDecorator extends TProtocolDecorator {
         .extract(Builtin.TEXT_MAP, new TextMapExtractAdapter(mapSpanContext));
 
     if (parent != null) {
-      spanBuilder.addReference(References.FOLLOWS_FROM, parent);
+      spanBuilder.asChildOf(parent);
     }
     Span span = spanBuilder.startActive(true).span();
     SpanDecorator.decorate(span, message);
