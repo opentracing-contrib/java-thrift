@@ -8,7 +8,7 @@ pom.xml
 <dependency>
     <groupId>io.opentracing.contrib</groupId>
     <artifactId>opentracing-thrift</artifactId>
-    <version>0.0.6</version>
+    <version>VERSION</version>
 </dependency>
 ```
 
@@ -24,8 +24,9 @@ Tracer tracer = ...
 GlobalTracer.register(tracer);
 
 ```
+### Synchronous mode
 
-###  Server
+####  Server
 
 ```java
 // Decorate TProcessor with SpanProcessor e.g.
@@ -36,7 +37,7 @@ TServer server = new TSimpleServer(new Args(transport).processor(spanProcessor))
 
 ```
 
-### Client
+#### Client
 
 ```java
 // Decorate TProtocol with SpanProtocol e.g.
@@ -44,6 +45,42 @@ TServer server = new TSimpleServer(new Args(transport).processor(spanProcessor))
 TTransport transport = ...
 TProtocol protocol = new TBinaryProtocol(transport);
 TProtocol spanProtocol = new SpanProtocol(protocol, tracer)
+
+```
+
+### Asynchronous mode
+
+#### Server
+
+```java
+// Decorate TProcessor with SpanProcessor
+TProcessor processor = ...
+TProcessor spanProcessor = new SpanProcessor(processor, tracer);
+
+TNonblockingServerSocket tnbSocketTransport = new TNonblockingServerSocket(8890, 30000);
+TNonblockingServer.Args tnbArgs = new TNonblockingServer.Args(tnbSocketTransport);
+tnbArgs.processor(spanProcessor);
+TServer server = new TNonblockingServer(tnbArgs);
+
+```
+
+#### Client
+
+```java
+
+// Decorate TProtocolFactory with SpanProtocol.Factory
+TProtocolFactory factory = new TBinaryProtocol.Factory();
+SpanProtocol.Factory protocolFactory = new SpanProtocol.Factory(factory, tracer, false);
+
+TNonblockingTransport transport = new TNonblockingSocket("localhost", 8890);
+TAsyncClientManager clientManager = new TAsyncClientManager();
+AsyncClient asyncClient = new AsyncClient(protocolFactory, clientManager, transport);
+
+// Decorate AsyncMethodCallback with TracingAsyncMethodCallback:
+AsyncMethodCallback<T> callback = ...
+TracingAsyncMethodCallback<T> tracingCallback = new TracingAsyncMethodCallback(callback, protocolFactory);
+
+asyncClient.callMethod(..., tracingCallback);
 
 ```
 

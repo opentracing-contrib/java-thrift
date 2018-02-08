@@ -18,6 +18,7 @@ import static org.awaitility.Awaitility.await;
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -28,6 +29,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import custom.CustomService;
+import custom.CustomService.AsyncClient;
 import io.opentracing.mock.MockSpan;
 import io.opentracing.mock.MockTracer;
 import io.opentracing.tag.Tags;
@@ -36,12 +38,19 @@ import io.opentracing.util.ThreadLocalScopeManager;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.thrift.TProcessor;
+import org.apache.thrift.async.AsyncMethodCallback;
+import org.apache.thrift.async.TAsyncClientManager;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
+import org.apache.thrift.server.TNonblockingServer;
 import org.apache.thrift.server.TServer;
 import org.apache.thrift.server.TServer.Args;
 import org.apache.thrift.server.TSimpleServer;
+import org.apache.thrift.transport.TNonblockingServerSocket;
+import org.apache.thrift.transport.TNonblockingSocket;
+import org.apache.thrift.transport.TNonblockingTransport;
 import org.apache.thrift.transport.TServerSocket;
 import org.apache.thrift.transport.TServerTransport;
 import org.apache.thrift.transport.TSocket;
@@ -92,7 +101,7 @@ public class TracingTest {
     List<MockSpan> mockSpans = mockTracer.finishedSpans();
     assertEquals(1, mockSpans.size());
 
-    checkSpans(mockSpans, "say");
+    checkSpans(mockSpans, "say", 1);
     assertNull(mockTracer.activeSpan());
     verify(mockTracer, times(1)).buildSpan(anyString());
   }
@@ -115,7 +124,7 @@ public class TracingTest {
     List<MockSpan> mockSpans = mockTracer.finishedSpans();
     assertEquals(1, mockSpans.size());
 
-    checkSpans(mockSpans, "say");
+    checkSpans(mockSpans, "say", 1);
     assertNull(mockTracer.activeSpan());
     verify(mockTracer, times(1)).buildSpan(anyString());
   }
@@ -140,7 +149,7 @@ public class TracingTest {
 
     assertTrue(mockSpans.get(0).parentId() != 0 || mockSpans.get(1).parentId() != 0);
 
-    checkSpans(mockSpans, "say");
+    checkSpans(mockSpans, "say", 1);
     assertNull(mockTracer.activeSpan());
     verify(mockTracer, times(2)).buildSpan(anyString());
   }
@@ -165,7 +174,7 @@ public class TracingTest {
 
     assertTrue(mockSpans.get(0).parentId() != 0 || mockSpans.get(1).parentId() != 0);
 
-    checkSpans(mockSpans, "withoutArgs");
+    checkSpans(mockSpans, "withoutArgs", 1);
     assertNull(mockTracer.activeSpan());
 
     verify(mockTracer, times(2)).buildSpan(anyString());
@@ -195,7 +204,7 @@ public class TracingTest {
 
     assertTrue(mockSpans.get(0).parentId() != 0 || mockSpans.get(1).parentId() != 0);
 
-    checkSpans(mockSpans, "withError");
+    checkSpans(mockSpans, "withError", 1);
 
     for (MockSpan mockSpan : mockSpans) {
       assertEquals(Boolean.TRUE, mockSpan.tags().get(Tags.ERROR.getKey()));
@@ -226,17 +235,117 @@ public class TracingTest {
 
     assertTrue(mockSpans.get(0).parentId() != 0 || mockSpans.get(1).parentId() != 0);
 
-    checkSpans(mockSpans, "withCollision");
+    checkSpans(mockSpans, "withCollision", 1);
+    verify(mockTracer, times(2)).buildSpan(anyString());
+  }
+
+
+  @Test
+  public void async() throws Exception {
+    int port = 8890;
+    startAsyncServer(port);
+
+    SpanProtocol.Factory protocolFactory = new SpanProtocol.Factory(new TBinaryProtocol.Factory(),
+        GlobalTracer.get(), false);
+
+    TNonblockingTransport transport = new TNonblockingSocket("localhost", port);
+    TAsyncClientManager clientManager = new TAsyncClientManager();
+    AsyncClient asyncClient = new AsyncClient(protocolFactory, clientManager, transport);
+    final AtomicInteger counter = new AtomicInteger();
+    asyncClient
+        .say("Async", "World", new TracingAsyncMethodCallback<>(new AsyncMethodCallback<String>() {
+          @Override
+          public void onComplete(String response) {
+            assertEquals("Say Async World", response);
+            assertNotNull(mockTracer.activeSpan());
+            counter.incrementAndGet();
+          }
+
+          @Override
+          public void onError(Exception exception) {
+            exception.printStackTrace();
+          }
+        }, protocolFactory));
+
+    await().atMost(15, TimeUnit.SECONDS).until(reportedSpansSize(), equalTo(2));
+    assertEquals(1, counter.get());
+
+    List<MockSpan> spans = mockTracer.finishedSpans();
+    assertEquals(2, spans.size());
+
+    checkSpans(spans, "say", 1);
+    assertNull(mockTracer.activeSpan());
+    verify(mockTracer, times(2)).buildSpan(anyString());
+  }
+
+  @Test
+  public void oneWay() throws Exception {
+    int port = 8891;
+    startNewServer(port);
+
+    TTransport transport = new TSocket("localhost", port);
+    transport.open();
+
+    TProtocol protocol = new TBinaryProtocol(transport);
+    CustomService.Client client = new CustomService.Client(new SpanProtocol(protocol));
+
+    client.oneWay();
+
+    await().atMost(15, TimeUnit.SECONDS).until(reportedSpansSize(), equalTo(2));
+
+    List<MockSpan> mockSpans = mockTracer.finishedSpans();
+    assertEquals(2, mockSpans.size());
+
+    assertTrue(mockSpans.get(0).parentId() != 0 || mockSpans.get(1).parentId() != 0);
+
+    checkSpans(mockSpans, "oneWay", 4);
+    verify(mockTracer, times(2)).buildSpan(anyString());
+  }
+
+  @Test
+  public void oneWayAsync() throws Exception {
+    int port = 8892;
+    startAsyncServer(port);
+
+    SpanProtocol.Factory protocolFactory = new SpanProtocol.Factory(new TBinaryProtocol.Factory(),
+        GlobalTracer.get(), false);
+
+    TNonblockingTransport transport = new TNonblockingSocket("localhost", port);
+    TAsyncClientManager clientManager = new TAsyncClientManager();
+    AsyncClient asyncClient = new AsyncClient(protocolFactory, clientManager, transport);
+    final AtomicInteger counter = new AtomicInteger();
+    asyncClient
+        .oneWay(new TracingAsyncMethodCallback<>(new AsyncMethodCallback<Void>() {
+          @Override
+          public void onComplete(Void response) {
+            assertNotNull(mockTracer.activeSpan());
+            counter.incrementAndGet();
+          }
+
+          @Override
+          public void onError(Exception exception) {
+            exception.printStackTrace();
+          }
+        }, protocolFactory));
+
+    await().atMost(15, TimeUnit.SECONDS).until(reportedSpansSize(), equalTo(2));
+    assertEquals(1, counter.get());
+
+    List<MockSpan> spans = mockTracer.finishedSpans();
+    assertEquals(2, spans.size());
+
+    checkSpans(spans, "oneWay", 4);
+    assertNull(mockTracer.activeSpan());
     verify(mockTracer, times(2)).buildSpan(anyString());
   }
 
   private void startNewServer(int port) throws Exception {
-    CustomHandler CustomHandler = new CustomHandler();
-    final TProcessor CustomProcessor = new CustomService.Processor<CustomService.Iface>(
-        CustomHandler);
+    CustomHandler customHandler = new CustomHandler();
+    final TProcessor customProcessor = new CustomService.Processor<CustomService.Iface>(
+        customHandler);
 
     TServerTransport transport = new TServerSocket(port);
-    server = new TSimpleServer(new Args(transport).processor(new SpanProcessor(CustomProcessor)));
+    server = new TSimpleServer(new Args(transport).processor(new SpanProcessor(customProcessor)));
 
     new Thread(new Runnable() {
       @Override
@@ -246,13 +355,30 @@ public class TracingTest {
     }).start();
   }
 
+  private void startAsyncServer(int port) throws Exception {
+    CustomHandler customHandler = new CustomHandler();
+    final TProcessor customProcessor = new CustomService.Processor<CustomService.Iface>(
+        customHandler);
+    TNonblockingServerSocket tnbSocketTransport = new TNonblockingServerSocket(port, 30000);
+    TNonblockingServer.Args tnbArgs = new TNonblockingServer.Args(tnbSocketTransport);
+    tnbArgs.processor(new SpanProcessor(customProcessor));
+
+    server = new TNonblockingServer(tnbArgs);
+    new Thread(new Runnable() {
+      @Override
+      public void run() {
+        server.serve();
+      }
+    }).start();
+  }
+
   private void startOldServer(int port) throws Exception {
-    CustomHandler CustomHandler = new CustomHandler();
-    final TProcessor CustomProcessor = new CustomService.Processor<CustomService.Iface>(
-        CustomHandler);
+    CustomHandler customHandler = new CustomHandler();
+    final TProcessor customProcessor = new CustomService.Processor<CustomService.Iface>(
+        customHandler);
 
     TServerTransport transport = new TServerSocket(port);
-    server = new TSimpleServer(new Args(transport).processor(CustomProcessor));
+    server = new TSimpleServer(new Args(transport).processor(customProcessor));
 
     new Thread(new Runnable() {
       @Override
@@ -277,15 +403,15 @@ public class TracingTest {
     };
   }
 
-  private void checkSpans(List<MockSpan> mockSpans, String name) {
+  private void checkSpans(List<MockSpan> mockSpans, String name, int messageType) {
     for (MockSpan mockSpan : mockSpans) {
       Object spanKind = mockSpan.tags().get(Tags.SPAN_KIND.getKey());
       assertTrue(spanKind.equals(Tags.SPAN_KIND_CLIENT) || spanKind.equals(Tags.SPAN_KIND_SERVER));
       assertEquals(SpanDecorator.COMPONENT_NAME, mockSpan.tags().get(Tags.COMPONENT.getKey()));
       assertEquals(name, mockSpan.operationName());
       assertEquals(name, mockSpan.tags().get("message.name"));
-      assertEquals((byte) 1, mockSpan.tags().get("message.type"));
-      assertEquals(1, mockSpan.tags().get("message.seqid"));
+      assertEquals((byte) messageType, mockSpan.tags().get("message.type"));
+      assertNotNull(mockSpan.tags().get("message.seqid"));
       assertEquals(0, mockSpan.generatedErrors().size());
     }
   }

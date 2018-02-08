@@ -8,4 +8,6 @@ service CustomService {
         string withError()
 
         string withCollision(3333: string input)
+
+        oneway void oneWay()
 }

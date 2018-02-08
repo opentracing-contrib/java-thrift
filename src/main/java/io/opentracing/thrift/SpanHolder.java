@@ -13,34 +13,21 @@
  */
 package io.opentracing.thrift;
 
-import custom.CustomService;
-import org.apache.thrift.TException;
+import io.opentracing.Span;
 
+class SpanHolder {
 
-public class CustomHandler implements CustomService.Iface {
+  private Span span;
 
-  @Override
-  public String say(String text, String text2) throws TException {
-    return "Say " + text + " " + text2;
+  public synchronized Span getSpan() {
+    return span;
   }
 
-  @Override
-  public String withoutArgs() throws TException {
-    return "no args";
+  public synchronized void setSpan(Span span) {
+    this.span = span;
   }
 
-  @Override
-  public String withError() throws TException {
-    throw new RuntimeException("fail");
-  }
-
-  @Override
-  public String withCollision(String input) throws TException {
-    return input;
-  }
-
-  @Override
-  public void oneWay() throws TException {
-
+  public synchronized void clear() {
+    this.span = null;
   }
 }
