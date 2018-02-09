@@ -49,6 +49,7 @@ import org.apache.thrift.TProcessor;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.async.TAsyncClientManager;
 import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TMessageType;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.server.TNonblockingServer;
 import org.apache.thrift.server.TServer;
@@ -107,7 +108,7 @@ public class TracingTest {
     List<MockSpan> mockSpans = mockTracer.finishedSpans();
     assertEquals(1, mockSpans.size());
 
-    checkSpans(mockSpans, "say", 1);
+    checkSpans(mockSpans, "say", TMessageType.CALL);
     assertNull(mockTracer.activeSpan());
     verify(mockTracer, times(1)).buildSpan(anyString());
     verify(mockTracer, times(1)).inject(any(SpanContext.class), any(Format.class), any());
@@ -131,7 +132,7 @@ public class TracingTest {
     List<MockSpan> mockSpans = mockTracer.finishedSpans();
     assertEquals(1, mockSpans.size());
 
-    checkSpans(mockSpans, "say", 1);
+    checkSpans(mockSpans, "say", TMessageType.CALL);
     assertNull(mockTracer.activeSpan());
     verify(mockTracer, times(1)).buildSpan(anyString());
     verify(mockTracer, times(0)).inject(any(SpanContext.class), any(Format.class), any());
@@ -157,7 +158,7 @@ public class TracingTest {
 
     assertTrue(mockSpans.get(0).parentId() != 0 || mockSpans.get(1).parentId() != 0);
 
-    checkSpans(mockSpans, "say", 1);
+    checkSpans(mockSpans, "say", TMessageType.CALL);
     assertNull(mockTracer.activeSpan());
     verify(mockTracer, times(2)).buildSpan(anyString());
     verify(mockTracer, times(1)).inject(any(SpanContext.class), any(Format.class), any());
@@ -183,7 +184,7 @@ public class TracingTest {
 
     assertTrue(mockSpans.get(0).parentId() != 0 || mockSpans.get(1).parentId() != 0);
 
-    checkSpans(mockSpans, "withoutArgs", 1);
+    checkSpans(mockSpans, "withoutArgs", TMessageType.CALL);
     assertNull(mockTracer.activeSpan());
 
     verify(mockTracer, times(2)).buildSpan(anyString());
@@ -214,7 +215,7 @@ public class TracingTest {
 
     assertTrue(mockSpans.get(0).parentId() != 0 || mockSpans.get(1).parentId() != 0);
 
-    checkSpans(mockSpans, "withError", 1);
+    checkSpans(mockSpans, "withError", TMessageType.CALL);
 
     for (MockSpan mockSpan : mockSpans) {
       assertEquals(Boolean.TRUE, mockSpan.tags().get(Tags.ERROR.getKey()));
@@ -246,7 +247,7 @@ public class TracingTest {
 
     assertTrue(mockSpans.get(0).parentId() != 0 || mockSpans.get(1).parentId() != 0);
 
-    checkSpans(mockSpans, "withCollision", 1);
+    checkSpans(mockSpans, "withCollision", TMessageType.CALL);
     verify(mockTracer, times(2)).buildSpan(anyString());
     verify(mockTracer, times(1)).inject(any(SpanContext.class), any(Format.class), any());
   }
@@ -285,7 +286,7 @@ public class TracingTest {
     List<MockSpan> spans = mockTracer.finishedSpans();
     assertEquals(2, spans.size());
 
-    checkSpans(spans, "say", 1);
+    checkSpans(spans, "say", TMessageType.CALL);
     assertNull(mockTracer.activeSpan());
     verify(mockTracer, times(2)).buildSpan(anyString());
     verify(mockTracer, times(1)).inject(any(SpanContext.class), any(Format.class), any());
@@ -311,7 +312,7 @@ public class TracingTest {
 
     assertTrue(mockSpans.get(0).parentId() != 0 || mockSpans.get(1).parentId() != 0);
 
-    checkSpans(mockSpans, "oneWay", 4);
+    checkSpans(mockSpans, "oneWay", TMessageType.ONEWAY);
     verify(mockTracer, times(2)).buildSpan(anyString());
     verify(mockTracer, times(1)).inject(any(SpanContext.class), any(Format.class), any());
   }
@@ -348,7 +349,7 @@ public class TracingTest {
     List<MockSpan> spans = mockTracer.finishedSpans();
     assertEquals(2, spans.size());
 
-    checkSpans(spans, "oneWay", 4);
+    checkSpans(spans, "oneWay", TMessageType.ONEWAY);
     assertNull(mockTracer.activeSpan());
     verify(mockTracer, times(2)).buildSpan(anyString());
     verify(mockTracer, times(1)).inject(any(SpanContext.class), any(Format.class), any());
@@ -380,7 +381,7 @@ public class TracingTest {
 
     assertTrue(mockSpans.get(0).parentId() != 0 || mockSpans.get(1).parentId() != 0);
 
-    checkSpans(mockSpans, "save", 1);
+    checkSpans(mockSpans, "save", TMessageType.CALL);
     verify(mockTracer, times(2)).buildSpan(anyString());
 
     verify(mockTracer, times(1)).inject(any(SpanContext.class), any(Format.class), any());
@@ -450,14 +451,14 @@ public class TracingTest {
     };
   }
 
-  private void checkSpans(List<MockSpan> mockSpans, String name, int messageType) {
+  private void checkSpans(List<MockSpan> mockSpans, String name, byte messageType) {
     for (MockSpan mockSpan : mockSpans) {
       Object spanKind = mockSpan.tags().get(Tags.SPAN_KIND.getKey());
       assertTrue(spanKind.equals(Tags.SPAN_KIND_CLIENT) || spanKind.equals(Tags.SPAN_KIND_SERVER));
       assertEquals(SpanDecorator.COMPONENT_NAME, mockSpan.tags().get(Tags.COMPONENT.getKey()));
       assertEquals(name, mockSpan.operationName());
       assertEquals(name, mockSpan.tags().get("message.name"));
-      assertEquals((byte) messageType, mockSpan.tags().get("message.type"));
+      assertEquals(messageType, mockSpan.tags().get("message.type"));
       assertNotNull(mockSpan.tags().get("message.seqid"));
       assertEquals(0, mockSpan.generatedErrors().size());
     }
