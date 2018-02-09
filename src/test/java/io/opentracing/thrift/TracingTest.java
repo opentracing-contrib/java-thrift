@@ -22,16 +22,22 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import custom.Address;
 import custom.CustomService;
 import custom.CustomService.AsyncClient;
+import custom.User;
+import custom.UserWithAddress;
+import io.opentracing.SpanContext;
 import io.opentracing.mock.MockSpan;
 import io.opentracing.mock.MockTracer;
+import io.opentracing.propagation.Format;
 import io.opentracing.tag.Tags;
 import io.opentracing.util.GlobalTracer;
 import io.opentracing.util.ThreadLocalScopeManager;
@@ -104,6 +110,7 @@ public class TracingTest {
     checkSpans(mockSpans, "say", 1);
     assertNull(mockTracer.activeSpan());
     verify(mockTracer, times(1)).buildSpan(anyString());
+    verify(mockTracer, times(1)).inject(any(SpanContext.class), any(Format.class), any());
   }
 
   @Test
@@ -127,6 +134,7 @@ public class TracingTest {
     checkSpans(mockSpans, "say", 1);
     assertNull(mockTracer.activeSpan());
     verify(mockTracer, times(1)).buildSpan(anyString());
+    verify(mockTracer, times(0)).inject(any(SpanContext.class), any(Format.class), any());
   }
 
   @Test
@@ -152,6 +160,7 @@ public class TracingTest {
     checkSpans(mockSpans, "say", 1);
     assertNull(mockTracer.activeSpan());
     verify(mockTracer, times(2)).buildSpan(anyString());
+    verify(mockTracer, times(1)).inject(any(SpanContext.class), any(Format.class), any());
   }
 
   @Test
@@ -178,6 +187,7 @@ public class TracingTest {
     assertNull(mockTracer.activeSpan());
 
     verify(mockTracer, times(2)).buildSpan(anyString());
+    verify(mockTracer, times(1)).inject(any(SpanContext.class), any(Format.class), any());
   }
 
   @Test
@@ -213,6 +223,7 @@ public class TracingTest {
     assertNull(mockTracer.activeSpan());
 
     verify(mockTracer, times(2)).buildSpan(anyString());
+    verify(mockTracer, times(1)).inject(any(SpanContext.class), any(Format.class), any());
   }
 
   @Test
@@ -237,6 +248,7 @@ public class TracingTest {
 
     checkSpans(mockSpans, "withCollision", 1);
     verify(mockTracer, times(2)).buildSpan(anyString());
+    verify(mockTracer, times(1)).inject(any(SpanContext.class), any(Format.class), any());
   }
 
 
@@ -276,6 +288,7 @@ public class TracingTest {
     checkSpans(spans, "say", 1);
     assertNull(mockTracer.activeSpan());
     verify(mockTracer, times(2)).buildSpan(anyString());
+    verify(mockTracer, times(1)).inject(any(SpanContext.class), any(Format.class), any());
   }
 
   @Test
@@ -300,6 +313,7 @@ public class TracingTest {
 
     checkSpans(mockSpans, "oneWay", 4);
     verify(mockTracer, times(2)).buildSpan(anyString());
+    verify(mockTracer, times(1)).inject(any(SpanContext.class), any(Format.class), any());
   }
 
   @Test
@@ -337,6 +351,39 @@ public class TracingTest {
     checkSpans(spans, "oneWay", 4);
     assertNull(mockTracer.activeSpan());
     verify(mockTracer, times(2)).buildSpan(anyString());
+    verify(mockTracer, times(1)).inject(any(SpanContext.class), any(Format.class), any());
+  }
+
+  @Test
+  public void withStruct() throws Exception {
+    int port = 8893;
+    startNewServer(port);
+
+    TTransport transport = new TSocket("localhost", port);
+    transport.open();
+
+    TProtocol protocol = new TBinaryProtocol(transport);
+    CustomService.Client client = new CustomService.Client(new SpanProtocol(protocol));
+
+    User user = new User("name32", 30);
+    Address address = new Address("line", "City", "1234AB");
+
+    UserWithAddress userWithAddress = client.save(user, address);
+
+    assertEquals(user, userWithAddress.user);
+    assertEquals(address, userWithAddress.address);
+
+    await().atMost(15, TimeUnit.SECONDS).until(reportedSpansSize(), equalTo(2));
+
+    List<MockSpan> mockSpans = mockTracer.finishedSpans();
+    assertEquals(2, mockSpans.size());
+
+    assertTrue(mockSpans.get(0).parentId() != 0 || mockSpans.get(1).parentId() != 0);
+
+    checkSpans(mockSpans, "save", 1);
+    verify(mockTracer, times(2)).buildSpan(anyString());
+
+    verify(mockTracer, times(1)).inject(any(SpanContext.class), any(Format.class), any());
   }
 
   private void startNewServer(int port) throws Exception {

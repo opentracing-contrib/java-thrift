@@ -50,6 +50,7 @@ public class SpanProtocol extends TProtocolDecorator {
   private final boolean finishSpan;
   static final short SPAN_FIELD_ID = 3333; // Magic number
   private boolean oneWay;
+  private boolean injected;
 
   /**
    * Encloses the specified protocol.
@@ -89,6 +90,7 @@ public class SpanProtocol extends TProtocolDecorator {
     spanHolder.setSpan(span);
 
     oneWay = tMessage.type == TMessageType.ONEWAY;
+    injected = false;
 
     SpanDecorator.decorate(span, tMessage);
     super.writeMessageBegin(tMessage);
@@ -109,20 +111,23 @@ public class SpanProtocol extends TProtocolDecorator {
 
   @Override
   public void writeFieldStop() throws TException {
-    Span span = spanHolder.getSpan();
-    if (span != null) {
-      Map<String, String> map = new HashMap<>();
-      TextMapInjectAdapter adapter = new TextMapInjectAdapter(map);
-      tracer.inject(span.context(), Builtin.TEXT_MAP, adapter);
+    if (!injected) {
+      Span span = spanHolder.getSpan();
+      if (span != null) {
+        Map<String, String> map = new HashMap<>();
+        TextMapInjectAdapter adapter = new TextMapInjectAdapter(map);
+        tracer.inject(span.context(), Builtin.TEXT_MAP, adapter);
 
-      super.writeFieldBegin(new TField("span", TType.MAP, SPAN_FIELD_ID));
-      super.writeMapBegin(new TMap(TType.STRING, TType.STRING, map.size()));
-      for (Entry<String, String> entry : map.entrySet()) {
-        super.writeString(entry.getKey());
-        super.writeString(entry.getValue());
+        super.writeFieldBegin(new TField("span", TType.MAP, SPAN_FIELD_ID));
+        super.writeMapBegin(new TMap(TType.STRING, TType.STRING, map.size()));
+        for (Entry<String, String> entry : map.entrySet()) {
+          super.writeString(entry.getKey());
+          super.writeString(entry.getValue());
+        }
+        super.writeMapEnd();
+        super.writeFieldEnd();
+        injected = true;
       }
-      super.writeMapEnd();
-      super.writeFieldEnd();
     }
 
     super.writeFieldStop();

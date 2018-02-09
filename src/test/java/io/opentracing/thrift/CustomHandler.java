@@ -13,7 +13,10 @@
  */
 package io.opentracing.thrift;
 
+import custom.Address;
 import custom.CustomService;
+import custom.User;
+import custom.UserWithAddress;
 import org.apache.thrift.TException;
 
 
@@ -42,5 +45,10 @@ public class CustomHandler implements CustomService.Iface {
   @Override
   public void oneWay() throws TException {
 
+  }
+
+  @Override
+  public UserWithAddress save(User user, Address address) throws TException {
+    return new UserWithAddress(user, address);
   }
 }
