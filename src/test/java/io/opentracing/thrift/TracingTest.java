@@ -34,6 +34,7 @@ import custom.CustomService;
 import custom.CustomService.AsyncClient;
 import custom.User;
 import custom.UserWithAddress;
+import io.opentracing.Scope;
 import io.opentracing.SpanContext;
 import io.opentracing.mock.MockSpan;
 import io.opentracing.mock.MockTracer;
@@ -41,6 +42,7 @@ import io.opentracing.propagation.Format;
 import io.opentracing.tag.Tags;
 import io.opentracing.util.GlobalTracer;
 import io.opentracing.util.ThreadLocalScopeManager;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
@@ -385,6 +387,81 @@ public class TracingTest {
     verify(mockTracer, times(2)).buildSpan(anyString());
 
     verify(mockTracer, times(1)).inject(any(SpanContext.class), any(Format.class), any());
+  }
+
+  @Test
+  public void manyCalls() throws Exception {
+    int port = 8894;
+    startNewServer(port);
+
+    TTransport transport = new TSocket("localhost", port);
+    transport.open();
+
+    TProtocol protocol = new TBinaryProtocol(transport);
+    CustomService.Client client = new CustomService.Client(new SpanProtocol(protocol));
+
+    assertEquals("Say one two", client.say("one", "two"));
+    assertEquals("Say three four", client.say("three", "four"));
+    client.oneWay();
+    assertEquals("no args", client.withoutArgs());
+
+    await().atMost(15, TimeUnit.SECONDS).until(reportedSpansSize(), equalTo(8));
+
+    List<MockSpan> spans = mockTracer.finishedSpans();
+    assertEquals(8, spans.size());
+
+    assertNull(mockTracer.activeSpan());
+    verify(mockTracer, times(4)).inject(any(SpanContext.class), any(Format.class), any());
+  }
+
+  @Test
+  public void withParent() throws Exception {
+    int port = 8894;
+    startNewServer(port);
+
+    TTransport transport = new TSocket("localhost", port);
+    transport.open();
+
+    TProtocol protocol = new TBinaryProtocol(transport);
+    CustomService.Client client = new CustomService.Client(new SpanProtocol(protocol));
+
+    Scope parent = mockTracer.buildSpan("parent").startActive(true);
+    MockSpan parentSpan = (MockSpan) parent.span();
+
+    assertEquals("Say one two", client.say("one", "two"));
+    assertEquals("Say three four", client.say("three", "four"));
+    client.oneWay();
+    assertEquals("no args", client.withoutArgs());
+
+    parent.close();
+
+    await().atMost(15, TimeUnit.SECONDS).until(reportedSpansSize(), equalTo(9));
+
+    List<MockSpan> spans = mockTracer.finishedSpans();
+    assertEquals(9, spans.size());
+    for (MockSpan span : spans) {
+      assertEquals(parentSpan.context().traceId(), span.context().traceId());
+    }
+
+    List<MockSpan> clientSpans = getClientSpans(spans);
+    assertEquals(4, clientSpans.size());
+    for (MockSpan clientSpan : clientSpans) {
+      assertEquals(parentSpan.context().spanId(), clientSpan.parentId());
+    }
+
+    assertNull(mockTracer.activeSpan());
+    verify(mockTracer, times(4)).inject(any(SpanContext.class), any(Format.class), any());
+  }
+
+  private List<MockSpan> getClientSpans(List<MockSpan> spans) {
+    List<MockSpan> res = new ArrayList<>();
+    for (MockSpan span : spans) {
+      Object spanKind = span.tags().get(Tags.SPAN_KIND.getKey());
+      if (Tags.SPAN_KIND_CLIENT.equals(spanKind)) {
+        res.add(span);
+      }
+    }
+    return res;
   }
 
   private void startNewServer(int port) throws Exception {
