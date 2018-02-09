@@ -88,9 +88,7 @@ public class SpanProtocol extends TProtocolDecorator {
         .start();
     spanHolder.setSpan(span);
 
-    if(tMessage.type == TMessageType.ONEWAY) {
-      oneWay = true;
-    }
+    oneWay = tMessage.type == TMessageType.ONEWAY;
 
     SpanDecorator.decorate(span, tMessage);
     super.writeMessageBegin(tMessage);
@@ -171,7 +169,6 @@ public class SpanProtocol extends TProtocolDecorator {
     private final boolean finishSpan;
 
     /**
-     *
      * @param delegate actual TProtocolFactory
      * @param tracer tracer
      * @param finishSpan <code>false</code> if {@link TracingAsyncMethodCallback} is used otherwise <code>true</code>
