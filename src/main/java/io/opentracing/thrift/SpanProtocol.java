@@ -14,7 +14,6 @@
 package io.opentracing.thrift;
 
 
-import io.opentracing.Scope;
 import io.opentracing.Span;
 import io.opentracing.Tracer;
 import io.opentracing.propagation.Format.Builtin;
@@ -28,9 +27,12 @@ import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TField;
 import org.apache.thrift.protocol.TMap;
 import org.apache.thrift.protocol.TMessage;
+import org.apache.thrift.protocol.TMessageType;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.protocol.TProtocolDecorator;
+import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.protocol.TType;
+import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 
 /**
@@ -44,7 +46,11 @@ import org.apache.thrift.transport.TTransportException;
 public class SpanProtocol extends TProtocolDecorator {
 
   private final Tracer tracer;
+  private final SpanHolder spanHolder;
+  private final boolean finishSpan;
   static final short SPAN_FIELD_ID = 3333; // Magic number
+  private boolean oneWay;
+  private boolean injected;
 
   /**
    * Encloses the specified protocol.
@@ -65,34 +71,63 @@ public class SpanProtocol extends TProtocolDecorator {
   public SpanProtocol(TProtocol protocol, Tracer tracer) {
     super(protocol);
     this.tracer = tracer;
+    this.spanHolder = new SpanHolder();
+    this.finishSpan = true;
+  }
+
+  SpanProtocol(TProtocol protocol, Tracer tracer, SpanHolder spanHolder, boolean finishSpan) {
+    super(protocol);
+    this.tracer = tracer;
+    this.spanHolder = spanHolder;
+    this.finishSpan = finishSpan;
   }
 
   @Override
   public void writeMessageBegin(TMessage tMessage) throws TException {
     Span span = tracer.buildSpan(tMessage.name)
         .withTag(Tags.SPAN_KIND.getKey(), Tags.SPAN_KIND_CLIENT)
-        .startActive(true).span();
+        .start();
+    spanHolder.setSpan(span);
+
+    oneWay = tMessage.type == TMessageType.ONEWAY;
+    injected = false;
 
     SpanDecorator.decorate(span, tMessage);
     super.writeMessageBegin(tMessage);
   }
 
   @Override
-  public void writeFieldStop() throws TException {
-    Span span = tracer.activeSpan();
-    if (span != null) {
-      Map<String, String> map = new HashMap<>();
-      TextMapInjectAdapter adapter = new TextMapInjectAdapter(map);
-      tracer.inject(span.context(), Builtin.TEXT_MAP, adapter);
-
-      super.writeFieldBegin(new TField("span", TType.MAP, SPAN_FIELD_ID));
-      super.writeMapBegin(new TMap(TType.STRING, TType.STRING, map.size()));
-      for (Entry<String, String> entry : map.entrySet()) {
-        super.writeString(entry.getKey());
-        super.writeString(entry.getValue());
+  public void writeMessageEnd() throws TException {
+    try {
+      super.writeMessageEnd();
+    } finally {
+      Span span = spanHolder.getSpan();
+      if (span != null && oneWay && finishSpan) {
+        span.finish();
+        spanHolder.setSpan(null);
       }
-      super.writeMapEnd();
-      super.writeFieldEnd();
+    }
+  }
+
+  @Override
+  public void writeFieldStop() throws TException {
+    if (!injected) {
+      Span span = spanHolder.getSpan();
+      if (span != null) {
+        Map<String, String> map = new HashMap<>();
+        TextMapInjectAdapter adapter = new TextMapInjectAdapter(map);
+        tracer.inject(span.context(), Builtin.TEXT_MAP, adapter);
+
+        super.writeFieldBegin(new TField("span", TType.MAP, SPAN_FIELD_ID));
+        super.writeMapBegin(new TMap(TType.STRING, TType.STRING, map.size()));
+        for (Entry<String, String> entry : map.entrySet()) {
+          super.writeString(entry.getKey());
+          super.writeString(entry.getValue());
+        }
+        super.writeMapEnd();
+        super.writeFieldEnd();
+        injected = true;
+      }
     }
 
     super.writeFieldStop();
@@ -103,10 +138,13 @@ public class SpanProtocol extends TProtocolDecorator {
     try {
       return super.readMessageBegin();
     } catch (TTransportException tte) {
-      Scope scope = tracer.scopeManager().active();
-      if (scope != null) {
-        SpanDecorator.onError(tte, scope.span());
-        scope.close();
+      Span span = spanHolder.getSpan();
+      if (span != null) {
+        SpanDecorator.onError(tte, span);
+        if (finishSpan) {
+          span.finish();
+          spanHolder.setSpan(null);
+        }
       }
       throw tte;
     }
@@ -117,10 +155,46 @@ public class SpanProtocol extends TProtocolDecorator {
     try {
       super.readMessageEnd();
     } finally {
-      Scope scope = tracer.scopeManager().active();
-      if (scope != null) {
-        scope.close();
+      Span span = spanHolder.getSpan();
+      if (span != null && finishSpan) {
+        span.finish();
+        spanHolder.setSpan(null);
       }
+    }
+  }
+
+  /**
+   * Factory
+   */
+  public static class Factory implements TProtocolFactory {
+
+    private final TProtocolFactory delegate;
+    private final SpanHolder spanHolder = new SpanHolder();
+    private final Tracer tracer;
+    private final boolean finishSpan;
+
+    /**
+     * @param delegate actual TProtocolFactory
+     * @param tracer tracer
+     * @param finishSpan <code>false</code> if {@link TracingAsyncMethodCallback} is used otherwise <code>true</code>
+     */
+    public Factory(TProtocolFactory delegate, Tracer tracer, boolean finishSpan) {
+      this.delegate = delegate;
+      this.tracer = tracer;
+      this.finishSpan = finishSpan;
+    }
+
+    @Override
+    public TProtocol getProtocol(TTransport trans) {
+      return new SpanProtocol(delegate.getProtocol(trans), tracer, spanHolder, finishSpan);
+    }
+
+    SpanHolder getSpanHolder() {
+      return spanHolder;
+    }
+
+    Tracer getTracer() {
+      return tracer;
     }
   }
 }
