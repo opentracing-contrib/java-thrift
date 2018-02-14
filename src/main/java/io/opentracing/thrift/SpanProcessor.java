@@ -53,7 +53,8 @@ public class SpanProcessor implements TProcessor {
     }
 
     try {
-      return processor.process(new ServerProtocolDecorator(iprot, message, tracer), oprot);
+      return processor.process(new ServerInProtocolDecorator(iprot, message, tracer),
+          new ServerOutProtocolDecorator(oprot, tracer));
     } catch (Exception e) {
       SpanDecorator.onError(e, tracer.activeSpan());
       throw e;

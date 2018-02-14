@@ -61,7 +61,7 @@
     <project.build.resourceEncoding>UTF-8</project.build.resourceEncoding>
 
     <opentracing.version>0.31.0</opentracing.version>
-    <thrift.version>0.10.0</thrift.version>
+    <thrift.version>0.11.0</thrift.version>
   </properties>
 
   <dependencies>
@@ -121,7 +121,7 @@
       <plugin>
         <groupId>org.apache.thrift</groupId>
         <artifactId>thrift-maven-plugin</artifactId>
-        <version>${thrift.version}</version>
+        <version>0.10.0</version>
         <executions>
           <execution>
             <id>thrift-sources</id>
@@ -174,7 +174,7 @@
             <exclude>mvnw</exclude>
             <exclude>mvnw.cmd</exclude>
             <exclude>.mvn/wrapper/maven-wrapper.properties</exclude>
-            <exclude>thrift-0.10.0/**</exclude>
+            <exclude>thrift-0.11.0/**</exclude>
           </excludes>
         </configuration>
         <executions>

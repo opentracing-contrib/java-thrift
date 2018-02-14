@@ -24,12 +24,13 @@ import org.apache.thrift.protocol.TMessage;
 
 class SpanDecorator {
 
+  static final String MESSAGE_TYPE = "message.type";
   static final String COMPONENT_NAME = "java-thrift";
 
   static void decorate(Span span, TMessage message) {
     span.setTag(Tags.COMPONENT.getKey(), COMPONENT_NAME);
     span.setTag("message.name", message.name);
-    span.setTag("message.type", message.type);
+    span.setTag(MESSAGE_TYPE, message.type);
     span.setTag("message.seqid", message.seqid);
   }
 

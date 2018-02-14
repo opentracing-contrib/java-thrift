@@ -32,7 +32,7 @@ import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.protocol.TProtocolDecorator;
 import org.apache.thrift.protocol.TType;
 
-class ServerProtocolDecorator extends TProtocolDecorator {
+class ServerInProtocolDecorator extends TProtocolDecorator {
 
   private final Tracer tracer;
   private final TMessage message;
@@ -40,7 +40,7 @@ class ServerProtocolDecorator extends TProtocolDecorator {
   private boolean nextSpan;
   private final List<String> mapElements = new ArrayList<>();
 
-  ServerProtocolDecorator(TProtocol protocol, TMessage message, Tracer tracer) {
+  ServerInProtocolDecorator(TProtocol protocol, TMessage message, Tracer tracer) {
     super(protocol);
     this.tracer = tracer;
     this.message = message;

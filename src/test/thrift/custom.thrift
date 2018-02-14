@@ -19,6 +19,8 @@ struct UserWithAddress {
 service CustomService {
         string say(1:string text, 2:string text2)
 
+        string withDelay(1:i32 delay)
+
         string withoutArgs()
 
         string withError()
@@ -26,6 +28,8 @@ service CustomService {
         string withCollision(3333: string input)
 
         oneway void oneWay()
+
+        oneway void oneWayWithError()
 
         UserWithAddress save(1:User user, 2:Address address)
 }
