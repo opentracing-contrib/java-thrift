@@ -98,7 +98,7 @@ public class TracingTest {
 
   @Test
   public void newClientOldServer() throws Exception {
-    startOldServer(port);
+    startOldServer();
 
     TTransport transport = new TSocket("localhost", port);
     transport.open();
@@ -121,7 +121,7 @@ public class TracingTest {
 
   @Test
   public void oldClientNewSever() throws Exception {
-    startNewServer(port);
+    startNewServer();
 
     TTransport transport = new TSocket("localhost", port);
     transport.open();
@@ -144,7 +144,7 @@ public class TracingTest {
 
   @Test
   public void newClientNewServer() throws Exception {
-    startNewServer(port);
+    startNewServer();
 
     TTransport transport = new TSocket("localhost", port);
     transport.open();
@@ -169,7 +169,7 @@ public class TracingTest {
 
   @Test
   public void withoutArgs() throws Exception {
-    startNewServer(port);
+    startNewServer();
 
     TTransport transport = new TSocket("localhost", port);
     transport.open();
@@ -195,7 +195,7 @@ public class TracingTest {
 
   @Test
   public void withError() throws Exception {
-    startNewServer(port);
+    startNewServer();
 
     TTransport transport = new TSocket("localhost", port);
     transport.open();
@@ -218,10 +218,6 @@ public class TracingTest {
 
     checkSpans(mockSpans, "withError", TMessageType.CALL, TMessageType.EXCEPTION);
 
-//    for (MockSpan mockSpan : mockSpans) {
-//      assertEquals(Boolean.TRUE, mockSpan.tags().get(Tags.ERROR.getKey()));
-//      assertFalse(mockSpan.logEntries().isEmpty());
-//    }
     assertNull(mockTracer.activeSpan());
 
     verify(mockTracer, times(2)).buildSpan(anyString());
@@ -230,7 +226,7 @@ public class TracingTest {
 
   @Test
   public void withCollision() throws Exception {
-    startNewServer(port);
+    startNewServer();
 
     TTransport transport = new TSocket("localhost", port);
     transport.open();
@@ -258,7 +254,7 @@ public class TracingTest {
    */
   @Test
   public void oneWayWithError() throws Exception {
-    startNewServer(port);
+    startNewServer();
     TTransport transport = new TSocket("localhost", port);
     transport.open();
 
@@ -281,7 +277,7 @@ public class TracingTest {
 
   @Test
   public void async() throws Exception {
-    startAsyncServer(port);
+    startAsyncServer();
 
     SpanProtocol.Factory protocolFactory = new SpanProtocol.Factory(new TBinaryProtocol.Factory(),
         GlobalTracer.get(), false);
@@ -319,7 +315,7 @@ public class TracingTest {
 
   @Test
   public void asyncMany() throws Exception {
-    startAsyncServer(port);
+    startAsyncServer();
     final AtomicInteger counter = new AtomicInteger();
     for (int i = 0; i < 4; i++) {
       SpanProtocol.Factory protocolFactory = new SpanProtocol.Factory(new TBinaryProtocol.Factory(),
@@ -357,7 +353,7 @@ public class TracingTest {
 
   @Test
   public void oneWay() throws Exception {
-    startNewServer(port);
+    startNewServer();
 
     TTransport transport = new TSocket("localhost", port);
     transport.open();
@@ -381,7 +377,7 @@ public class TracingTest {
 
   @Test
   public void oneWayAsync() throws Exception {
-    startAsyncServer(port);
+    startAsyncServer();
 
     SpanProtocol.Factory protocolFactory = new SpanProtocol.Factory(new TBinaryProtocol.Factory(),
         GlobalTracer.get(), false);
@@ -418,7 +414,7 @@ public class TracingTest {
 
   @Test
   public void withStruct() throws Exception {
-    startNewServer(port);
+    startNewServer();
 
     TTransport transport = new TSocket("localhost", port);
     transport.open();
@@ -449,7 +445,7 @@ public class TracingTest {
 
   @Test
   public void manyCalls() throws Exception {
-    startNewServer(port);
+    startNewServer();
 
     TTransport transport = new TSocket("localhost", port);
     transport.open();
@@ -473,7 +469,7 @@ public class TracingTest {
 
   @Test
   public void manyCallsParallel() throws Exception {
-    startNewServer(port);
+    startNewServer();
 
     for (int i = 0; i < 4; i++) {
       new Thread(new Runnable() {
@@ -506,7 +502,7 @@ public class TracingTest {
 
   @Test
   public void withParent() throws Exception {
-    startNewServer(port);
+    startNewServer();
 
     TTransport transport = new TSocket("localhost", port);
     transport.open();
@@ -553,27 +549,11 @@ public class TracingTest {
     return res;
   }
 
-  private void startNewServer(int port) throws Exception {
-    startThreadPoolServer();
+  private void startNewServer() throws Exception {
+    startNewThreadPoolServer();
   }
 
-  private void startNewSimpleServer(int port) throws Exception {
-    CustomHandler customHandler = new CustomHandler();
-    final TProcessor customProcessor = new CustomService.Processor<CustomService.Iface>(
-        customHandler);
-
-    TServerTransport transport = new TServerSocket(port);
-    server = new TSimpleServer(new Args(transport).processor(new SpanProcessor(customProcessor)));
-
-    new Thread(new Runnable() {
-      @Override
-      public void run() {
-        server.serve();
-      }
-    }).start();
-  }
-
-  private void startThreadPoolServer() throws Exception {
+  private void startNewThreadPoolServer() throws Exception {
     TServerTransport transport = new TServerSocket(port);
     TProtocolFactory protocolFactory = new TBinaryProtocol.Factory();
     //TTransportFactory transportFactory = new TFramedTransport.Factory();
@@ -600,7 +580,7 @@ public class TracingTest {
     }).start();
   }
 
-  private void startAsyncServer(int port) throws Exception {
+  private void startAsyncServer() throws Exception {
     CustomHandler customHandler = new CustomHandler();
     final TProcessor customProcessor = new CustomService.Processor<CustomService.Iface>(
         customHandler);
@@ -617,7 +597,7 @@ public class TracingTest {
     }).start();
   }
 
-  private void startOldServer(int port) throws Exception {
+  private void startOldServer() throws Exception {
     CustomHandler customHandler = new CustomHandler();
     final TProcessor customProcessor = new CustomService.Processor<CustomService.Iface>(
         customHandler);
@@ -629,7 +609,6 @@ public class TracingTest {
       @Override
       public void run() {
         server.serve();
-        System.out.println("SERVE");
       }
     }).start();
   }
