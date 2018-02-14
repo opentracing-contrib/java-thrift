@@ -17,6 +17,7 @@ import custom.Address;
 import custom.CustomService;
 import custom.User;
 import custom.UserWithAddress;
+import java.util.concurrent.TimeUnit;
 import org.apache.thrift.TException;
 
 
@@ -25,6 +26,16 @@ public class CustomHandler implements CustomService.Iface {
   @Override
   public String say(String text, String text2) throws TException {
     return "Say " + text + " " + text2;
+  }
+
+  @Override
+  public String withDelay(int seconds) throws TException {
+    try {
+      TimeUnit.SECONDS.sleep(seconds);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+    return "delay " + seconds;
   }
 
   @Override
@@ -45,6 +56,11 @@ public class CustomHandler implements CustomService.Iface {
   @Override
   public void oneWay() throws TException {
 
+  }
+
+  @Override
+  public void oneWayWithError() throws TException {
+    throw new RuntimeException("fail");
   }
 
   @Override
