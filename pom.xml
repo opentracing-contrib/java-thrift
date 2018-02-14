@@ -21,7 +21,7 @@
   <artifactId>opentracing-thrift</artifactId>
   <version>0.0.7-SNAPSHOT</version>
 
-  <name>${project.groupId}:${project.artifactId}</name>
+  <name>OpenTracing Instrumentation for Apache Thrift</name>
   <description>OpenTracing Instrumentation for Apache Thrift</description>
   <url>https://github.com/opentracing-contrib/java-thrift</url>
   <inceptionYear>2017-2018</inceptionYear>
