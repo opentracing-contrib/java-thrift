@@ -1,4 +1,4 @@
-[![Build Status][ci-img]][ci] [![Released Version][maven-img]][maven]
+[![Build Status][ci-img]][ci] [![Coverage Status][cov-img]][cov] [![Released Version][maven-img]][maven]
 
 # OpenTracing Apache Thrift Instrumentation
 OpenTracing instrumentation for Apache Thrift
@@ -86,5 +86,7 @@ asyncClient.callMethod(..., tracingCallback);
 
 [ci-img]: https://travis-ci.org/opentracing-contrib/java-thrift.svg?branch=master
 [ci]: https://travis-ci.org/opentracing-contrib/java-thrift
+[cov-img]: https://coveralls.io/repos/github/opentracing-contrib/java-thrift/badge.svg?branch=master
+[cov]: https://coveralls.io/github/opentracing-contrib/java-thrift?branch=master
 [maven-img]: https://img.shields.io/maven-central/v/io.opentracing.contrib/opentracing-thrift.svg
 [maven]: http://search.maven.org/#search%7Cga%7C1%7Copentracing-thrift
