@@ -84,6 +84,10 @@ asyncClient.callMethod(..., tracingCallback);
 
 ```
 
+## License
+
+[Apache 2.0 License](./LICENSE).
+
 [ci-img]: https://travis-ci.org/opentracing-contrib/java-thrift.svg?branch=master
 [ci]: https://travis-ci.org/opentracing-contrib/java-thrift
 [cov-img]: https://coveralls.io/repos/github/opentracing-contrib/java-thrift/badge.svg?branch=master
