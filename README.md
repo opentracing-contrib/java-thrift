@@ -84,6 +84,38 @@ asyncClient.callMethod(..., tracingCallback);
 
 ```
 
+### Custom Client Span Tags
+To customise the tags added to spans on the client side, create a custom implementation of ClientSpanDecorator.
+
+```java
+
+class MyClientSpanDecorator implements ClientSpanDecorator {
+    
+    @Override
+    public void decorate(Span span, TMessage message) {
+        // Add custom tags to the span.
+    }
+    
+    @Override
+    public void onError(Throwable throwable, Span span) {
+        // Add custom tags for when an error is thrown by the thrift call.
+    }
+}
+
+```
+
+Then pass this into your SpanProtocol.
+
+```java
+
+TProtocol spanProtocol = new SpanProtocol(protocol, tracer, new MyClientSpanDecorator() );
+
+```
+
+If no custom ClientSpanDecorator is provided, the DefaultClientSpanDecorator is used.
+This delegates its methods to the static methods in the SpanDecorator class.
+The DefaultClientSpanDecorator can be extended if you want to add to the default behaviour.
+
 ## License
 
 [Apache 2.0 License](./LICENSE).

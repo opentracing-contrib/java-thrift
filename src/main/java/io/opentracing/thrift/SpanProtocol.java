@@ -48,6 +48,7 @@ public class SpanProtocol extends TProtocolDecorator {
   private final Tracer tracer;
   private final SpanHolder spanHolder;
   private final boolean finishSpan;
+  private final ClientSpanDecorator spanDecorator;
   static final short SPAN_FIELD_ID = 3333; // Magic number
   private boolean oneWay;
   private boolean injected;
@@ -69,10 +70,23 @@ public class SpanProtocol extends TProtocolDecorator {
    * @param tracer Tracer.
    */
   public SpanProtocol(TProtocol protocol, Tracer tracer) {
+    this(protocol, tracer, new DefaultClientSpanDecorator());
+  }
+
+  /**
+   * Encloses the specified protocol.
+   * Adds a custom ProtocolSpanDecorator to add tags to spans.
+   *
+   * @param protocol All operations will be forward to this protocol.
+   * @param tracer Tracer.
+   * @param spanDecorator The ProtocolSpanDecorator to use to add tags to spans.
+   */
+  public SpanProtocol(TProtocol protocol, Tracer tracer, ClientSpanDecorator spanDecorator) {
     super(protocol);
     this.tracer = tracer;
     this.spanHolder = new SpanHolder();
     this.finishSpan = true;
+    this.spanDecorator = spanDecorator;
   }
 
   SpanProtocol(TProtocol protocol, Tracer tracer, SpanHolder spanHolder, boolean finishSpan) {
@@ -80,6 +94,7 @@ public class SpanProtocol extends TProtocolDecorator {
     this.tracer = tracer;
     this.spanHolder = spanHolder;
     this.finishSpan = finishSpan;
+    this.spanDecorator = new DefaultClientSpanDecorator();
   }
 
   @Override
@@ -92,7 +107,7 @@ public class SpanProtocol extends TProtocolDecorator {
     oneWay = tMessage.type == TMessageType.ONEWAY;
     injected = false;
 
-    SpanDecorator.decorate(span, tMessage);
+    spanDecorator.decorate(span, tMessage);
     super.writeMessageBegin(tMessage);
   }
 
@@ -140,7 +155,7 @@ public class SpanProtocol extends TProtocolDecorator {
     } catch (TTransportException tte) {
       Span span = spanHolder.getSpan();
       if (span != null) {
-        SpanDecorator.onError(tte, span);
+        spanDecorator.onError(tte, span);
         if (finishSpan) {
           span.finish();
           spanHolder.setSpan(null);
