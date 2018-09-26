@@ -17,22 +17,17 @@ import io.opentracing.Span;
 import org.apache.thrift.protocol.TMessage;
 
 /**
- * Interface for decorating Spans generated on the client side of a Thrift call.
+ * Default decorator for spans generated on the client side.
  */
-public interface ClientSpanDecorator {
-    /**
-     * Decorate a span with information from a TMessage.
-     *
-     * @param span    Span.
-     * @param message TMessage.
-     */
-    void decorate(Span span, TMessage message);
+public class DefaultClientSpanDecorator implements ClientSpanDecorator {
 
-    /**
-     * Decorate a span with information from a caught throwable.
-     *
-     * @param span      Span.
-     * @param throwable Throwable.
-     */
-    void onError(Throwable throwable, Span span);
+  @Override
+  public void decorate(Span span, TMessage message) {
+    SpanDecorator.decorate(span, message);
+  }
+
+  @Override
+  public void onError(Throwable throwable, Span span) {
+    SpanDecorator.onError(throwable, span);
+  }
 }

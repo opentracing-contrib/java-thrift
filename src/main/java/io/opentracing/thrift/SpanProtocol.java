@@ -70,7 +70,7 @@ public class SpanProtocol extends TProtocolDecorator {
    * @param tracer Tracer.
    */
   public SpanProtocol(TProtocol protocol, Tracer tracer) {
-    this(protocol, tracer, new ClientSpanDecorator());
+    this(protocol, tracer, new DefaultClientSpanDecorator());
   }
 
   /**
@@ -94,7 +94,7 @@ public class SpanProtocol extends TProtocolDecorator {
     this.tracer = tracer;
     this.spanHolder = spanHolder;
     this.finishSpan = finishSpan;
-    this.spanDecorator = new ClientSpanDecorator();
+    this.spanDecorator = new DefaultClientSpanDecorator();
   }
 
   @Override
