@@ -114,7 +114,7 @@ TProtocol spanProtocol = new SpanProtocol(protocol, tracer, new MyClientSpanDeco
 
 If no custom ClientSpanDecorator is provided, the DefaultClientSpanDecorator is used.
 This delegates its methods to the static methods in the SpanDecorator class.
-TThe DefaultClientSpanDecorator can be extended if you want to add to the default behaviour.
+The DefaultClientSpanDecorator can be extended if you want to add to the default behaviour.
 
 ## License
 
