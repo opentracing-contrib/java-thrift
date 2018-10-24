@@ -89,7 +89,7 @@ public class SpanProtocol extends TProtocolDecorator {
     this.spanDecorator = spanDecorator;
   }
 
-  SpanProtocol(TProtocol protocol, Tracer tracer, SpanHolder spanHolder, boolean finishSpan) {
+  public SpanProtocol(TProtocol protocol, Tracer tracer, SpanHolder spanHolder, boolean finishSpan) {
     super(protocol);
     this.tracer = tracer;
     this.spanHolder = spanHolder;
