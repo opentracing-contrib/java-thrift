@@ -15,7 +15,8 @@ package io.opentracing.thrift;
 
 import io.opentracing.Span;
 
-class SpanHolder {
+// intentionally public class to allow to extend SpanProtocol
+public class SpanHolder {
 
   private Span span;
 
