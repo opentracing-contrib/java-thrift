@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2018 The OpenTracing Authors
+ * Copyright 2017-2019 The OpenTracing Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -20,19 +20,19 @@ import org.apache.thrift.protocol.TMessage;
  * Interface for decorating Spans generated on the client side of a Thrift call.
  */
 public interface ClientSpanDecorator {
-    /**
-     * Decorate a span with information from a TMessage.
-     *
-     * @param span    Span.
-     * @param message TMessage.
-     */
-    void decorate(Span span, TMessage message);
+  /**
+   * Decorate a span with information from a TMessage.
+   *
+   * @param span Span.
+   * @param message TMessage.
+   */
+  void decorate(Span span, TMessage message);
 
-    /**
-     * Decorate a span with information from a caught throwable.
-     *
-     * @param span      Span.
-     * @param throwable Throwable.
-     */
-    void onError(Throwable throwable, Span span);
+  /**
+   * Decorate a span with information from a caught throwable.
+   *
+   * @param span Span.
+   * @param throwable Throwable.
+   */
+  void onError(Throwable throwable, Span span);
 }
