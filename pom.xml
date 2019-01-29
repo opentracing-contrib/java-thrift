@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
 
-    Copyright 2017-2018 The OpenTracing Authors
+    Copyright 2017-2019 The OpenTracing Authors
 
     Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
     in compliance with the License. You may obtain a copy of the License at
@@ -14,7 +14,9 @@
     the License.
 
 -->
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>io.opentracing.contrib</groupId>
@@ -24,7 +26,7 @@
   <name>OpenTracing Instrumentation for Apache Thrift</name>
   <description>OpenTracing Instrumentation for Apache Thrift</description>
   <url>https://github.com/opentracing-contrib/java-thrift</url>
-  <inceptionYear>2017-2018</inceptionYear>
+  <inceptionYear>2017-2019</inceptionYear>
 
   <scm>
     <url>http://github.com/opentracing-contrib/java-thrift</url>
@@ -61,9 +63,9 @@
     <project.build.resourceEncoding>UTF-8</project.build.resourceEncoding>
 
     <opentracing.version>0.31.0</opentracing.version>
-    <thrift.version>0.11.0</thrift.version>
+    <thrift.version>0.12.0</thrift.version>
     <coveralls-maven-plugin.version>4.3.0</coveralls-maven-plugin.version>
-    <jacoco-maven-plugin.version>0.8.1</jacoco-maven-plugin.version>
+    <jacoco-maven-plugin.version>0.8.3</jacoco-maven-plugin.version>
   </properties>
 
   <dependencies>
@@ -89,14 +91,14 @@
     <dependency>
       <groupId>org.awaitility</groupId>
       <artifactId>awaitility</artifactId>
-      <version>3.0.0</version>
+      <version>3.1.6</version>
       <scope>test</scope>
     </dependency>
 
     <dependency>
       <groupId>org.mockito</groupId>
       <artifactId>mockito-core</artifactId>
-      <version>2.13.0</version>
+      <version>2.23.4</version>
       <scope>test</scope>
     </dependency>
 
@@ -114,7 +116,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.7.0</version>
+        <version>3.8.0</version>
         <configuration>
           <source>${java.version}</source>
           <target>${java.version}</target>
@@ -176,7 +178,7 @@
             <exclude>mvnw</exclude>
             <exclude>mvnw.cmd</exclude>
             <exclude>.mvn/wrapper/maven-wrapper.properties</exclude>
-            <exclude>thrift-0.11.0/**</exclude>
+            <exclude>thrift-0.12.0/**</exclude>
             <exclude>.coveralls.yml</exclude>
           </excludes>
         </configuration>
@@ -244,7 +246,7 @@
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-javadoc-plugin</artifactId>
-            <version>3.0.0</version>
+            <version>3.0.1</version>
             <configuration>
               <failOnError>false</failOnError>
             </configuration>

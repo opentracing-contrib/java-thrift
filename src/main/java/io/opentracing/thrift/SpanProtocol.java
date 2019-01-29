@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2018 The OpenTracing Authors
+ * Copyright 2017-2019 The OpenTracing Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -37,8 +37,8 @@ import org.apache.thrift.transport.TTransportException;
 
 /**
  * <code>SpanProtocol</code> is a protocol-independent concrete decorator that allows a Thrift
- * client to communicate with a tracing Thrift server, by adding the span context to the
- * string field during function calls.
+ * client to communicate with a tracing Thrift server, by adding the span context to the string
+ * field during function calls.
  *
  * <p>NOTE: THIS IS NOT USED BY SERVERS.  On the server, use {@link SpanProcessor} to handle
  * requests from a tracing client.
@@ -54,8 +54,7 @@ public class SpanProtocol extends TProtocolDecorator {
   private boolean injected;
 
   /**
-   * Encloses the specified protocol.
-   * Take tracer from GlobalTracer
+   * Encloses the specified protocol. Take tracer from GlobalTracer
    *
    * @param protocol All operations will be forward to this protocol.
    */
@@ -74,8 +73,7 @@ public class SpanProtocol extends TProtocolDecorator {
   }
 
   /**
-   * Encloses the specified protocol.
-   * Adds a custom ProtocolSpanDecorator to add tags to spans.
+   * Encloses the specified protocol. Adds a custom ProtocolSpanDecorator to add tags to spans.
    *
    * @param protocol All operations will be forward to this protocol.
    * @param tracer Tracer.
@@ -89,7 +87,8 @@ public class SpanProtocol extends TProtocolDecorator {
     this.spanDecorator = spanDecorator;
   }
 
-  public SpanProtocol(TProtocol protocol, Tracer tracer, SpanHolder spanHolder, boolean finishSpan) {
+  public SpanProtocol(TProtocol protocol, Tracer tracer, SpanHolder spanHolder,
+      boolean finishSpan) {
     super(protocol);
     this.tracer = tracer;
     this.spanHolder = spanHolder;
@@ -191,7 +190,8 @@ public class SpanProtocol extends TProtocolDecorator {
     /**
      * @param delegate actual TProtocolFactory
      * @param tracer tracer
-     * @param finishSpan <code>false</code> if {@link TracingAsyncMethodCallback} is used otherwise <code>true</code>
+     * @param finishSpan <code>false</code> if {@link TracingAsyncMethodCallback} is used otherwise
+     * <code>true</code>
      */
     public Factory(TProtocolFactory delegate, Tracer tracer, boolean finishSpan) {
       this.delegate = delegate;
