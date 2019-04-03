@@ -13,12 +13,13 @@
  */
 package io.opentracing.thrift;
 
+import io.opentracing.Scope;
 import io.opentracing.Span;
 import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
 import io.opentracing.Tracer.SpanBuilder;
 import io.opentracing.propagation.Format.Builtin;
-import io.opentracing.propagation.TextMapExtractAdapter;
+import io.opentracing.propagation.TextMapAdapter;
 import io.opentracing.tag.Tags;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -39,6 +40,8 @@ class ServerInProtocolDecorator extends TProtocolDecorator {
   private final SpanBuilder spanBuilder;
   private boolean nextSpan;
   private final List<String> mapElements = new ArrayList<>();
+  private Scope activeScope;
+  private Span activeSpan;
 
   ServerInProtocolDecorator(TProtocol protocol, TMessage message, Tracer tracer) {
     super(protocol);
@@ -86,9 +89,9 @@ class ServerInProtocolDecorator extends TProtocolDecorator {
 
   @Override
   public void readMessageEnd() throws TException {
-    Span activeSpan = tracer.activeSpan();
-    if (activeSpan == null) {
-      activeSpan = spanBuilder.startActive(true).span();
+    if (tracer.activeSpan() == null) {
+      activeSpan = spanBuilder.start();
+      activeScope = tracer.activateSpan(activeSpan);
       SpanDecorator.decorate(activeSpan, message);
     }
     super.readMessageEnd();
@@ -105,12 +108,24 @@ class ServerInProtocolDecorator extends TProtocolDecorator {
     }
 
     SpanContext parent = tracer
-        .extract(Builtin.TEXT_MAP, new TextMapExtractAdapter(mapSpanContext));
+        .extract(Builtin.TEXT_MAP, new TextMapAdapter(mapSpanContext));
 
     if (parent != null) {
       spanBuilder.asChildOf(parent);
     }
-    Span span = spanBuilder.startActive(true).span();
-    SpanDecorator.decorate(span, message);
+    activeSpan = spanBuilder.start();
+    activeScope = tracer.activateSpan(activeSpan);
+    SpanDecorator.decorate(activeSpan, message);
+  }
+
+  void closeSpan() {
+    if (activeSpan != null) {
+      activeScope.close();
+      activeScope = null;
+    }
+    if (activeSpan != null) {
+      activeSpan.finish();
+      activeSpan = null;
+    }
   }
 }

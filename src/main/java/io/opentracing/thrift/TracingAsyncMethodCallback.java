@@ -35,13 +35,14 @@ public class TracingAsyncMethodCallback<T> implements AsyncMethodCallback<T> {
     final Span span = spanHolder.getSpan();
     Scope scope = null;
     if (span != null) {
-      scope = tracer.scopeManager().activate(span, true);
+      scope = tracer.scopeManager().activate(span);
     }
     try {
       callback.onComplete(response);
     } finally {
       if (scope != null) {
         scope.close();
+        span.finish();
         spanHolder.clear();
       }
     }
@@ -52,7 +53,7 @@ public class TracingAsyncMethodCallback<T> implements AsyncMethodCallback<T> {
     final Span span = spanHolder.getSpan();
     Scope scope = null;
     if (span != null) {
-      scope = tracer.scopeManager().activate(span, true);
+      scope = tracer.scopeManager().activate(span);
     }
     try {
       callback.onError(exception);
@@ -60,6 +61,7 @@ public class TracingAsyncMethodCallback<T> implements AsyncMethodCallback<T> {
       if (scope != null) {
         SpanDecorator.onError(exception, span);
         scope.close();
+        span.finish();
         spanHolder.clear();
       }
     }

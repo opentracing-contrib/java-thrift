@@ -18,18 +18,17 @@ import custom.CustomService;
 import custom.User;
 import custom.UserWithAddress;
 import java.util.concurrent.TimeUnit;
-import org.apache.thrift.TException;
 
 
 public class CustomHandler implements CustomService.Iface {
 
   @Override
-  public String say(String text, String text2) throws TException {
+  public String say(String text, String text2) {
     return "Say " + text + " " + text2;
   }
 
   @Override
-  public String withDelay(int seconds) throws TException {
+  public String withDelay(int seconds) {
     try {
       TimeUnit.SECONDS.sleep(seconds);
     } catch (InterruptedException e) {
@@ -39,32 +38,32 @@ public class CustomHandler implements CustomService.Iface {
   }
 
   @Override
-  public String withoutArgs() throws TException {
+  public String withoutArgs() {
     return "no args";
   }
 
   @Override
-  public String withError() throws TException {
+  public String withError() {
     throw new RuntimeException("fail");
   }
 
   @Override
-  public String withCollision(String input) throws TException {
+  public String withCollision(String input) {
     return input;
   }
 
   @Override
-  public void oneWay() throws TException {
+  public void oneWay() {
 
   }
 
   @Override
-  public void oneWayWithError() throws TException {
+  public void oneWayWithError() {
     throw new RuntimeException("fail");
   }
 
   @Override
-  public UserWithAddress save(User user, Address address) throws TException {
+  public UserWithAddress save(User user, Address address) {
     return new UserWithAddress(user, address);
   }
 }

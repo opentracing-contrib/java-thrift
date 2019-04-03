@@ -13,7 +13,6 @@
  */
 package io.opentracing.thrift;
 
-import io.opentracing.Scope;
 import io.opentracing.Tracer;
 import io.opentracing.util.GlobalTracer;
 import org.apache.thrift.TException;
@@ -52,17 +51,16 @@ public class SpanProcessor implements TProcessor {
       throw new TException("This should not have happened!?");
     }
 
+    final ServerInProtocolDecorator serverInProtocolDecorator = new ServerInProtocolDecorator(iprot,
+        message, tracer);
     try {
-      return processor.process(new ServerInProtocolDecorator(iprot, message, tracer),
+      return processor.process(serverInProtocolDecorator,
           new ServerOutProtocolDecorator(oprot, tracer));
     } catch (Exception e) {
       SpanDecorator.onError(e, tracer.activeSpan());
       throw e;
     } finally {
-      Scope scope = tracer.scopeManager().active();
-      if (scope != null) {
-        scope.close();
-      }
+      serverInProtocolDecorator.closeSpan();
     }
   }
 }

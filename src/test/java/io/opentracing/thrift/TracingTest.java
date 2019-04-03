@@ -40,7 +40,6 @@ import io.opentracing.mock.MockTracer;
 import io.opentracing.propagation.Format;
 import io.opentracing.tag.Tags;
 import io.opentracing.util.GlobalTracer;
-import io.opentracing.util.ThreadLocalScopeManager;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -73,19 +72,18 @@ import org.junit.Test;
 
 public class TracingTest {
 
-  private static final MockTracer mockTracer = spy(new MockTracer(new ThreadLocalScopeManager(),
-      MockTracer.Propagator.TEXT_MAP));
+  private static final MockTracer mockTracer = spy(new MockTracer());
   private TServer server;
   private static int port = 8883;
 
 
   @BeforeClass
   public static void init() {
-    GlobalTracer.register(mockTracer);
+    GlobalTracer.registerIfAbsent(mockTracer);
   }
 
   @Before
-  public void before() throws Exception {
+  public void before() {
     mockTracer.reset();
     reset(mockTracer);
     port++;
@@ -511,7 +509,7 @@ public class TracingTest {
     CustomService.Client client = new CustomService.Client(new SpanProtocol(protocol));
 
     Scope parent = mockTracer.buildSpan("parent").startActive(true);
-    MockSpan parentSpan = (MockSpan) parent.span();
+    MockSpan parentSpan = (MockSpan) mockTracer.activeSpan();
 
     assertEquals("Say one two", client.say("one", "two"));
     assertEquals("Say three four", client.say("three", "four"));
@@ -622,7 +620,7 @@ public class TracingTest {
   private Callable<Integer> reportedSpansSize() {
     return new Callable<Integer>() {
       @Override
-      public Integer call() throws Exception {
+      public Integer call() {
         return mockTracer.finishedSpans().size();
       }
     };

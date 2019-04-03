@@ -17,7 +17,7 @@ package io.opentracing.thrift;
 import io.opentracing.Span;
 import io.opentracing.Tracer;
 import io.opentracing.propagation.Format.Builtin;
-import io.opentracing.propagation.TextMapInjectAdapter;
+import io.opentracing.propagation.TextMapAdapter;
 import io.opentracing.tag.Tags;
 import io.opentracing.util.GlobalTracer;
 import java.util.HashMap;
@@ -129,8 +129,7 @@ public class SpanProtocol extends TProtocolDecorator {
       Span span = spanHolder.getSpan();
       if (span != null) {
         Map<String, String> map = new HashMap<>();
-        TextMapInjectAdapter adapter = new TextMapInjectAdapter(map);
-        tracer.inject(span.context(), Builtin.TEXT_MAP, adapter);
+        tracer.inject(span.context(), Builtin.TEXT_MAP, new TextMapAdapter(map));
 
         super.writeFieldBegin(new TField("span", TType.MAP, SPAN_FIELD_ID));
         super.writeMapBegin(new TMap(TType.STRING, TType.STRING, map.size()));
