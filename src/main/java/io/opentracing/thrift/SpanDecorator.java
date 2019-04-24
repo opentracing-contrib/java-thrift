@@ -16,8 +16,6 @@ package io.opentracing.thrift;
 
 import io.opentracing.Span;
 import io.opentracing.tag.Tags;
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.thrift.protocol.TMessage;
@@ -43,17 +41,11 @@ class SpanDecorator {
   }
 
   private static Map<String, Object> errorLogs(Throwable throwable) {
-    Map<String, Object> errorLogs = new HashMap<>();
+    Map<String, Object> errorLogs = new HashMap<>(3);
     errorLogs.put("event", Tags.ERROR.getKey());
-    errorLogs.put("error.kind", throwable.getClass().getName());
-    errorLogs.put("error.object", throwable);
-
-    errorLogs.put("message", throwable.getMessage());
-
-    StringWriter sw = new StringWriter();
-    throwable.printStackTrace(new PrintWriter(sw));
-    errorLogs.put("stack", sw.toString());
-
+    if (throwable != null) {
+      errorLogs.put("error.object", throwable);
+    }
     return errorLogs;
   }
 }
