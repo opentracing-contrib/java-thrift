@@ -119,7 +119,7 @@ class ServerInProtocolDecorator extends TProtocolDecorator {
   }
 
   void closeSpan() {
-    if (activeSpan != null) {
+    if (activeScope != null) {
       activeScope.close();
       activeScope = null;
     }
