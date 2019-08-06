@@ -508,28 +508,29 @@ public class TracingTest {
     TProtocol protocol = new TBinaryProtocol(transport);
     CustomService.Client client = new CustomService.Client(new SpanProtocol(protocol));
 
-    Scope parent = mockTracer.buildSpan("parent").startActive(true);
-    MockSpan parentSpan = (MockSpan) mockTracer.activeSpan();
+    MockSpan parent = mockTracer.buildSpan("parent").start();
+    Scope parentScope = mockTracer.activateSpan(parent);
 
     assertEquals("Say one two", client.say("one", "two"));
     assertEquals("Say three four", client.say("three", "four"));
     client.oneWay();
     assertEquals("no args", client.withoutArgs());
 
-    parent.close();
+    parentScope.close();
+    parent.finish();
 
     await().atMost(15, TimeUnit.SECONDS).until(reportedSpansSize(), equalTo(9));
 
     List<MockSpan> spans = mockTracer.finishedSpans();
     assertEquals(9, spans.size());
     for (MockSpan span : spans) {
-      assertEquals(parentSpan.context().traceId(), span.context().traceId());
+      assertEquals(parent.context().traceId(), span.context().traceId());
     }
 
     List<MockSpan> clientSpans = getClientSpans(spans);
     assertEquals(4, clientSpans.size());
     for (MockSpan clientSpan : clientSpans) {
-      assertEquals(parentSpan.context().spanId(), clientSpan.parentId());
+      assertEquals(parent.context().spanId(), clientSpan.parentId());
     }
 
     assertNull(mockTracer.activeSpan());
