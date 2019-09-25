@@ -84,6 +84,7 @@
       <groupId>org.apache.thrift</groupId>
       <artifactId>libthrift</artifactId>
       <version>${thrift.version}</version>
+      <scope>provided</scope>
     </dependency>
 
     <dependency>
