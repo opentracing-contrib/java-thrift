@@ -44,7 +44,7 @@ public class SpanProcessor implements TProcessor {
   }
 
   @Override
-  public boolean process(TProtocol iprot, TProtocol oprot) throws TException {
+  public void process(TProtocol iprot, TProtocol oprot) throws TException {
     TMessage message = iprot.readMessageBegin();
 
     if (message.type != TMessageType.CALL && message.type != TMessageType.ONEWAY) {
@@ -54,7 +54,7 @@ public class SpanProcessor implements TProcessor {
     final ServerInProtocolDecorator serverInProtocolDecorator = new ServerInProtocolDecorator(iprot,
         message, tracer);
     try {
-      return processor.process(serverInProtocolDecorator,
+      processor.process(serverInProtocolDecorator,
           new ServerOutProtocolDecorator(oprot, tracer));
     } catch (Exception e) {
       SpanDecorator.onError(e, tracer.activeSpan());
