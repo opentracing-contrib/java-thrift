@@ -17,6 +17,7 @@ before_install:
   - wget http://archive.apache.org/dist/thrift/0.13.0/thrift-0.13.0.tar.gz
   - tar xfz thrift-0.13.0.tar.gz
   - cd thrift-0.13.0
+  - find -name '*.properties' -type f -exec sed -i -e 's$http://repo1.maven.org$https://repo1.maven.org$g' {} \;
   - ./configure --without-c_glib --without-cpp --without-ruby --without-python --without-go --without-erlang --without-nodejs --without-php
   - sudo make install
   - cd ..

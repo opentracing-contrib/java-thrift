@@ -179,7 +179,7 @@
             <exclude>mvnw</exclude>
             <exclude>mvnw.cmd</exclude>
             <exclude>.mvn/wrapper/maven-wrapper.properties</exclude>
-            <exclude>thrift-0.12.0/**</exclude>
+            <exclude>thrift-0.13.0/**</exclude>
             <exclude>.coveralls.yml</exclude>
             <exclude>src/test/thrift/custom.thrift</exclude>
           </excludes>
