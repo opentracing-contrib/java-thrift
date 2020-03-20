@@ -110,6 +110,19 @@
       <scope>test</scope>
     </dependency>
 
+    <dependency>
+      <groupId>ch.qos.logback</groupId>
+      <artifactId>logback-classic</artifactId>
+      <version>1.2.3</version>
+      <exclusions>
+        <exclusion>
+          <!-- Pulled in by libthrift -->
+          <artifactId>slf4j-api</artifactId>
+          <groupId>org.slf4j</groupId>
+        </exclusion>
+      </exclusions>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <build>
@@ -119,8 +132,7 @@
         <artifactId>maven-compiler-plugin</artifactId>
         <version>3.8.1</version>
         <configuration>
-          <source>${java.version}</source>
-          <target>${java.version}</target>
+          <release>7</release>
         </configuration>
       </plugin>
       <plugin>
@@ -179,7 +191,7 @@
             <exclude>mvnw</exclude>
             <exclude>mvnw.cmd</exclude>
             <exclude>.mvn/wrapper/maven-wrapper.properties</exclude>
-            <exclude>thrift-0.12.0/**</exclude>
+            <exclude>thrift-0.13.0/**</exclude>
             <exclude>.coveralls.yml</exclude>
             <exclude>src/test/thrift/custom.thrift</exclude>
           </excludes>
