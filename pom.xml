@@ -61,7 +61,7 @@
     <project.build.resourceEncoding>UTF-8</project.build.resourceEncoding>
 
     <opentracing.version>0.33.0</opentracing.version>
-    <thrift.version>0.14.0</thrift.version>
+    <thrift.version>0.14.2</thrift.version>
     <coveralls-maven-plugin.version>4.3.0</coveralls-maven-plugin.version>
     <jacoco-maven-plugin.version>0.8.4</jacoco-maven-plugin.version>
   </properties>
