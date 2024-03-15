@@ -19,7 +19,7 @@
 
   <groupId>com.spond</groupId>
   <artifactId>opentracing-thrift</artifactId>
-  <version>0.1.6-SNAPSHOT</version>
+  <version>0.1.7</version>
 
   <name>OpenTracing Instrumentation for Apache Thrift</name>
   <description>OpenTracing Instrumentation for Apache Thrift</description>

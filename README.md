@@ -1,16 +1,35 @@
-[![Build Status][ci-img]][ci] [![Coverage Status][cov-img]][cov] [![Released Version][maven-img]][maven] [![Apache-2.0 license](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Apache-2.0 license](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 # OpenTracing Apache Thrift Instrumentation
-OpenTracing instrumentation for Apache Thrift
+OpenTracing instrumentation for Apache Thrift. 
+
+Forked and modified by [Spond](https://spond.com).
 
 pom.xml
 ```xml
 <dependency>
-    <groupId>io.opentracing.contrib</groupId>
+    <groupId>com.spond</groupId>
     <artifactId>opentracing-thrift</artifactId>
     <version>VERSION</version>
 </dependency>
 ```
+
+build.gradle
+```
+api 'com.spond:opentracing-thrift:{VERSION}'
+```
+
+## Publishing changes
+
+This fork has been modified with the ability to publish new versions to a [Code Artifact](https://aws.amazon.com/codeartifact/) Maven repository.
+
+Publishing a new version to code artifact can be done manually with the Maven command:
+```
+./mvnw deploy
+```
+This command requires the environment variables `CODEARTIFACT_REPO` and `CODEARTIFACT_AUTH_TOKEN` to be set.
+- `CODEARTIFACT_REPO`: The address of the code artifact repository to publish to
+- `CODEARTIFACT_AUTH_TOKEN`: A valid code artifact auth token with permissions to publish to the provideded repository.
 
 ## Usage
 

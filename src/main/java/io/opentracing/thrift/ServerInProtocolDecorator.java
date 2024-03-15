@@ -48,7 +48,8 @@ class ServerInProtocolDecorator extends TProtocolDecorator {
     this.tracer = tracer;
     this.message = message;
 
-    spanBuilder = tracer.buildSpan(message.name)
+    spanBuilder = tracer.buildSpan("thrift.operation")
+        .withTag("resource_name", message.name)
         .withTag(Tags.SPAN_KIND.getKey(), Tags.SPAN_KIND_SERVER);
   }
 
